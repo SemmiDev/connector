@@ -1,4 +1,4 @@
-.PHONY: run rebuild deploy
+.PHONY: run rebuild deploy install-golang
 
 run:
 	@go run cmd/*.go
