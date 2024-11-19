@@ -12,8 +12,11 @@ rebuild:
 
 logs:
 	@sudo journalctl -f -u g-learning-connector
+
 deploy:
 	@git pull
+	@mkdir -p ../connector-production
+	@go build -o ../connector-production/g-learning-connector cmd/*.go
 	@sudo rm /etc/systemd/system/g-learning-connector.service
 	@sudo mv g-learning-connector.service /etc/systemd/system
 	@sudo systemctl enable g-learning-connector
