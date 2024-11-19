@@ -13,7 +13,6 @@ StartLimitBurst=5
 Type=exec
 User=garuda
 Group=garuda
-EnvironmentFile=/home/garuda/connector-production
 WorkingDirectory=/home/garuda/connector-production
 ExecStart=/home/garuda/connector-production/g-learning-connector
 
