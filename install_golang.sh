@@ -41,3 +41,6 @@ echo "Verifikasi instalasi Golang..."
 go version
 
 echo "Instalasi Golang versi $GO_LATEST selesai!"
+
+# 8. Hapus file unduhan
+rm "${GO_LATEST}.linux-amd64.tar.gz"

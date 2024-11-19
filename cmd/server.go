@@ -35,7 +35,10 @@ func (a *ApplicationServer) SetupRoutes() {
 }
 
 func (a *ApplicationServer) Run() {
-	port := fmt.Sprintf(":%s", a.config.AppPort)
-	err := a.router.Listen(port)
+	host := "0.0.0.0"
+	port := fmt.Sprintf("%s", a.config.AppPort)
+	hostPort := fmt.Sprintf("%s:%s", host, port)
+
+	err := a.router.Listen(hostPort)
 	gl.PanicIfNeeded(err)
 }
