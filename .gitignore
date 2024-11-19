@@ -1,0 +1,10 @@
+.idea
+playground.http
+logs
+docs/query-test.sql
+glearning-data/grafana-data
+tmp/
+vendor/
+
+scripts/ansible/variables.yml/vars
+.env
