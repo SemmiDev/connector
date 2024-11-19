@@ -38,14 +38,14 @@ func (a *ApplicationServer) SetupHealthCheckRoutes() {
 }
 
 func (a *ApplicationServer) SetupRoutes() {
-	a.router.Get("/api/misca/semesters", a.ListSemesters)
-	a.router.Get("/api/misca/semesters/active", a.GetActiveSemester)
+	a.router.Get("/api/misca/semesters", a.WithApiKey(), a.ListSemesters)
+	a.router.Get("/api/misca/semesters/active", a.WithApiKey(), a.GetActiveSemester)
 
-	a.router.Get("/api/misca/students", a.ListStudents)
-	a.router.Get("/api/misca/students/total", a.GetTotalStudents)
+	a.router.Get("/api/misca/students", a.WithApiKey(), a.ListStudents)
+	a.router.Get("/api/misca/students/total", a.WithApiKey(), a.GetTotalStudents)
 
-	a.router.Get("/api/misca/lecturers", a.ListLecturer)
-	a.router.Get("/api/misca/lecturers/total", a.GetTotalLecturer)
+	a.router.Get("/api/misca/lecturers", a.WithApiKey(), a.ListLecturer)
+	a.router.Get("/api/misca/lecturers/total", a.WithApiKey(), a.GetTotalLecturer)
 }
 
 func (a *ApplicationServer) Run() {
