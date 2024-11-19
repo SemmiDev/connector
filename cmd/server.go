@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
 )
@@ -21,6 +22,19 @@ func NewApplicationServer(db *gorm.DB, config *gl.Config, router *fiber.App) *Ap
 	}
 
 	return &app
+}
+
+func (a *ApplicationServer) SetupHealthCheckRoutes() {
+	a.router.Use(healthcheck.New(healthcheck.Config{
+		LivenessProbe: func(c *fiber.Ctx) bool {
+			return true
+		},
+		LivenessEndpoint: "/live",
+		ReadinessProbe: func(c *fiber.Ctx) bool {
+			return true
+		},
+		ReadinessEndpoint: "/ready",
+	}))
 }
 
 func (a *ApplicationServer) SetupRoutes() {

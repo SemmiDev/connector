@@ -22,6 +22,7 @@ func main() {
 	})
 
 	app := NewApplicationServer(db, config, router)
+	app.SetupHealthCheckRoutes()
 	app.SetupRoutes()
 	app.Run()
 }
