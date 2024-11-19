@@ -15,7 +15,7 @@ User=garuda
 Group=garuda
 EnvironmentFile=/home/garuda/connector-production
 WorkingDirectory=/home/garuda/connector-production
-ExecStart=/home/garuda/connector/connector-production
+ExecStart=/home/garuda/connector-production/g-learning-connector
 
 # Automatically restart the service after a 5-second wait if it exits with a non-zero
 # exit code. If it restarts more than 5 times in 600 seconds, then the rate limit we
