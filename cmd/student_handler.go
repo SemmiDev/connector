@@ -45,22 +45,30 @@ func (a *ApplicationServer) ListStudents(c *fiber.Ctx) error {
 	limit := req.Filter.GetLimit()
 
 	q := a.db.
-		Select(`id, nama_mahasiswa, jenis_kelamin, nik, email, handphone, telepon`).
-		Table("mahasiswa")
+		Select(`mahasiswa_histori.id_pd AS id, mahasiswa.nama_mahasiswa, mahasiswa.jenis_kelamin, mahasiswa.nik, mahasiswa.email, mahasiswa.handphone, mahasiswa.telepon`).
+		Table("mahasiswa_histori").
+		Joins("INNER JOIN mahasiswa ON mahasiswa_histori.id_mahasiswa = mahasiswa.id")
 
 	if req.Filter.HasKeyword() {
-		q = q.Where("nama_mahasiswa LIKE ? OR nik LIKE ?", "%"+req.Filter.Keyword+"%", "%"+req.Filter.Keyword+"%")
+		q = q.Where("mahasiswa.nama_mahasiswa LIKE ? OR mahasiswa.nik LIKE ?", "%"+req.Filter.Keyword+"%", "%"+req.Filter.Keyword+"%")
 	}
 
 	if req.Filter.HasSort() {
+		sortBy := req.Filter.SortBy
+		if sortBy == "id" {
+			sortBy = "mahasiswa_histori.id_pd"
+		} else {
+			sortBy = "mahasiswa." + sortBy
+		}
+
 		q = q.Order(
 			clause.OrderByColumn{
-				Column: clause.Column{Name: req.Filter.SortBy},
+				Column: clause.Column{Name: sortBy},
 				Desc:   req.Filter.IsDesc(),
 			},
 		)
 	} else {
-		q = q.Order("created_at ASC")
+		q = q.Order("mahasiswa_histori.created_at ASC")
 	}
 
 	// Menghitung jumlah total data tanpa offset dan limit
