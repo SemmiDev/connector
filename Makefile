@@ -17,7 +17,7 @@ deploy:
 	@git pull
 	@mkdir -p ../connector-production
 	@go build -o ../connector-production/g-learning-connector cmd/*.go
-	@sudo rm /etc/systemd/system/g-learning-connector.service
+	@sudo rm -f /etc/systemd/system/g-learning-connector.service
 	@sudo cp g-learning-connector.service /etc/systemd/system
 	@sudo systemctl enable g-learning-connector
 	@sudo systemctl restart g-learning-connector
