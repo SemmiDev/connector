@@ -143,11 +143,11 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 				CONCAT(
 					CASE jadwal.hari
 						WHEN '1' THEN 'Senin'
-						WHEN '2' THEN 'Senin'
-						WHEN '3' THEN 'Selasa'
-						WHEN '4' THEN 'Rabu'
-						WHEN '5' THEN 'Kamis'
-						WHEN '6' THEN 'Jumat'
+						WHEN '2' THEN 'Selasa'
+						WHEN '3' THEN 'Rabu'
+						WHEN '4' THEN 'Kamis'
+						WHEN '5' THEN 'Jumat'
+						WHEN '6' THEN 'Sabtu'
 						ELSE 'Unknown'
 					END, '-',
 					jadwal.jam_mulai, '-', 
