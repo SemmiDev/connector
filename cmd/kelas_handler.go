@@ -25,6 +25,7 @@ type (
 		NamaMatakuliah  string `json:"nama_matakuliah"`
 		KodeMatakuliah  string `json:"kode_matakuliah"`
 		IDDosenPengajar string `json:"id_dosen_pengajar"`
+		Jadwal          string `json:"jadwal"`
 	}
 
 	ListKelasResponse struct {
@@ -43,6 +44,7 @@ type (
 		KodeMataKuliah     string `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
 		IDPTKDosenPengajar string `json:"id_dosen_pengajar" gorm:"column:id_dosen_pengajar"`
 		Semester           string `json:"semester" gorm:"column:semester"`
+		Jadwal             string `json:"jadwal" gorm:"column:jadwal"`
 	}
 )
 
@@ -60,10 +62,11 @@ func convertListKelasModels(models []ListKelasModel) ([]ListKelasResponse, error
 		namaMatakuliahList := strings.Split(model.NamaMataKuliah, "|")
 		kodeMatakuliahList := strings.Split(model.KodeMataKuliah, "|")
 		idDosenPengajarList := strings.Split(model.IDPTKDosenPengajar, "|")
+		jadwalList := strings.Split(model.Jadwal, "|")
 
 		// Pastikan semua array memiliki panjang yang sama
 		maxLen := len(idKelasList)
-		if len(namaKelasList) != maxLen || len(namaMatakuliahList) != maxLen || len(kodeMatakuliahList) != maxLen || len(idDosenPengajarList) != maxLen {
+		if len(namaKelasList) != maxLen || len(namaMatakuliahList) != maxLen || len(kodeMatakuliahList) != maxLen || len(idDosenPengajarList) != maxLen || len(jadwalList) != maxLen {
 			return nil, ErrMissmatchData
 		}
 
@@ -76,6 +79,7 @@ func convertListKelasModels(models []ListKelasModel) ([]ListKelasResponse, error
 				NamaMatakuliah:  namaMatakuliahList[i],
 				KodeMatakuliah:  kodeMatakuliahList[i],
 				IDDosenPengajar: idDosenPengajarList[i],
+				Jadwal:          jadwalList[i],
 			}
 		}
 
@@ -134,7 +138,23 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 			GROUP_CONCAT(kelaskuliah.nm_kls ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS nama_kelas,
 			GROUP_CONCAT(matakuliah.nm_mk ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS nama_matakuliah,
 			GROUP_CONCAT(matakuliah.kode_mk ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS kode_matakuliah,
-			GROUP_CONCAT(akt_ajar_dosen.id_ptk ORDER BY akt_ajar_dosen.id_ptk SEPARATOR '|') AS id_dosen_pengajar,
+			GROUP_CONCAT(akt_ajar_dosen.id_ptk ORDER BY akt_ajar_dosen.id_ptk SEPARATOR '|') AS id_dosen_pengajar,			
+			GROUP_CONCAT(
+				CONCAT(
+					CASE jadwal.hari
+						WHEN '1' THEN 'Senin'
+						WHEN '2' THEN 'Senin'
+						WHEN '3' THEN 'Selasa'
+						WHEN '4' THEN 'Rabu'
+						WHEN '5' THEN 'Kamis'
+						WHEN '6' THEN 'Jumat'
+						ELSE 'Unknown'
+					END, '-',
+					jadwal.jam_mulai, '-', 
+					jadwal.jam_selesai
+				) 
+				ORDER BY jadwal.id_jadwal SEPARATOR '|'
+			) AS jadwal,
 			nilai.smt_ambil AS semester
 		`).
 		Joins("JOIN mahasiswa_histori ON mahasiswa_histori.id_pd = nilai.id_pd").
@@ -143,6 +163,7 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		Joins("JOIN matakuliah_kurikulum ON matakuliah_kurikulum.id_mk_kur = kelaskuliah.id_mk_kur").
 		Joins("JOIN matakuliah ON matakuliah.id_mk = matakuliah_kurikulum.id_mk").
 		Joins("LEFT JOIN akt_ajar_dosen ON akt_ajar_dosen.id_kls = kelaskuliah.id_kls").
+		Joins("LEFT JOIN jadwal ON jadwal.id_kls = kelaskuliah.id_kls").
 		Where("nilai.smt_ambil = ?", req.Semester).
 		Group("nilai.id_pd, mahasiswa.nik, nilai.smt_ambil")
 

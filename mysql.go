@@ -5,7 +5,6 @@ import (
 	"github.com/pkg/errors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 func NewMySQLDatabase(config *Config) (*gorm.DB, error) {
@@ -18,7 +17,7 @@ func NewMySQLDatabase(config *Config) (*gorm.DB, error) {
 	)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		//Logger: logger.Default.LogMode(logger.Silent),
 	})
 
 	if err != nil {
