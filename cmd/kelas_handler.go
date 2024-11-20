@@ -89,29 +89,36 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 }
 
 func (a *ApplicationServer) GetTotalKelas(c *fiber.Ctx) error {
+	var activeSemester string
+
+	if err := a.db.
+		Table("setting").
+		Where("param = ?", "periode_berlaku").
+		Select("value").
+		Scan(&activeSemester).
+		Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	semester := c.Query("semester", activeSemester)
+
 	var total int64
 
 	// Buat query GORM
 	err := a.db.Table("nilai").
-		Select("nilai.id_pd AS id_pd").
+		Select("nilai.id_pd").
 		Joins("JOIN mahasiswa_histori ON mahasiswa_histori.id_pd = nilai.id_pd").
 		Joins("JOIN mahasiswa ON mahasiswa.id = mahasiswa_histori.id_mahasiswa").
 		Joins("JOIN kelaskuliah ON kelaskuliah.id_kls = nilai.id_kls").
 		Joins("JOIN matakuliah_kurikulum ON matakuliah_kurikulum.id_mk_kur = kelaskuliah.id_mk_kur").
 		Joins("JOIN matakuliah ON matakuliah.id_mk = matakuliah_kurikulum.id_mk").
 		Joins("LEFT JOIN akt_ajar_dosen ON akt_ajar_dosen.id_kls = kelaskuliah.id_kls").
-		Where("nilai.smt_ambil = ?", "20241").
+		Where("nilai.smt_ambil = ?", semester).
 		Group("nilai.id_pd, mahasiswa.nik, nilai.smt_ambil").
 		Count(&total).Error // Hitung total
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(ApiResponse[GetTotalKelasResponse]{
-			Code:    fiber.StatusInternalServerError,
-			Status:  http.StatusText(fiber.StatusInternalServerError),
-			Success: false,
-			Message: "Gagal menghitung total kelas",
-			Data:    GetTotalKelasResponse{},
-		})
+		return HandleError(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalKelasResponse]{
