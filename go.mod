@@ -3,6 +3,7 @@ module lab.garudacyber.co.id/g-learning-connector
 go 1.22.1
 
 require (
+	github.com/alitto/pond/v2 v2.1.4
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/goccy/go-json v0.10.3

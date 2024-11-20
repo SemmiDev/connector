@@ -101,7 +101,145 @@ func NewListKelasRequest() *ListStudentKelasRequest {
 	}
 }
 
-func (a *ApplicationServer) ListStudentKelas(c *fiber.Ctx) error {
+type ListSimpleStudentKelas struct {
+	IDPd     string `json:"id_pd"`
+	NIK      string `json:"nik"`
+	IDKelas  string `json:"id_kelas"`
+	Semester string `json:"semester"`
+}
+
+func (a *ApplicationServer) ListSimpleStudentKelas(c *fiber.Ctx) error {
+	req := NewListKelasRequest()
+	if err := c.QueryParser(req); err != nil {
+		return HandleError(c, err)
+	}
+
+	var activeSemester string
+
+	// Ambil semester aktif
+	if err := a.db.
+		Table("setting").
+		Where("param = ?", "periode_berlaku").
+		Select("value").
+		Scan(&activeSemester).
+		Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Set default semester jika kosong
+	if req.Semester == "" {
+		req.Semester = activeSemester
+	}
+
+	// Model untuk menampung hasil query
+	listKelas := make([]ListSimpleStudentKelas, 0)
+
+	offset := req.Filter.GetOffset()
+	limit := req.Filter.GetLimit()
+
+	// Query hanya mengambil kolom yang diperlukan
+	q := a.db.Table("nilai").
+		Select(`
+			nilai.id_pd AS id_pd,
+			mahasiswa.nik AS nik,
+			GROUP_CONCAT(kelaskuliah.id_kls ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS id_kelas,
+			nilai.smt_ambil AS semester
+		`).
+		Joins("JOIN mahasiswa_histori ON mahasiswa_histori.id_pd = nilai.id_pd").
+		Joins("JOIN mahasiswa ON mahasiswa.id = mahasiswa_histori.id_mahasiswa").
+		Joins("JOIN kelaskuliah ON kelaskuliah.id_kls = nilai.id_kls").
+		Where("nilai.smt_ambil = ?", req.Semester).
+		Group("nilai.id_pd, mahasiswa.nik, nilai.smt_ambil")
+
+	// Filter berdasarkan keyword
+	if req.Filter.HasKeyword() {
+		q = q.Where("mahasiswa.nik LIKE ?", "%"+req.Filter.Keyword+"%")
+	}
+
+	// Sorting default atau sesuai request
+	if req.Filter.HasSort() {
+		q = q.Order(clause.OrderByColumn{
+			Column: clause.Column{Name: req.Filter.SortBy},
+			Desc:   req.Filter.IsDesc(),
+		})
+	} else {
+		q = q.Order("nilai.id_pd ASC")
+	}
+
+	// Menghitung jumlah total data
+	var totalData int64
+	if err := q.Count(&totalData).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Menambahkan limit dan offset
+	q = q.Offset(int(offset)).Limit(int(limit))
+
+	// Eksekusi query
+	if err := q.Scan(&listKelas).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Membuat informasi paginasi
+	pageInfo, err := gl.NewPageInfo(req.Filter.CurrentPage, limit, offset, totalData)
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	// Mengembalikan hasil sebagai JSON
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListSimpleStudentKelas]]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan data kelas sederhana",
+		Data: ListDataApiResponseWrapper[ListSimpleStudentKelas]{
+			List:     listKelas,
+			PageInfo: pageInfo,
+		},
+	})
+}
+
+func (a *ApplicationServer) TotalListSimpleStudentKelas(c *fiber.Ctx) error {
+	var activeSemester string
+
+	// Ambil semester aktif
+	if err := a.db.
+		Table("setting").
+		Where("param = ?", "periode_berlaku").
+		Select("value").
+		Scan(&activeSemester).
+		Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	semester := c.Query("semester", activeSemester)
+
+	var total int64
+
+	err := a.db.Table("nilai").
+		Joins("JOIN mahasiswa_histori ON mahasiswa_histori.id_pd = nilai.id_pd").
+		Joins("JOIN mahasiswa ON mahasiswa.id = mahasiswa_histori.id_mahasiswa").
+		Joins("JOIN kelaskuliah ON kelaskuliah.id_kls = nilai.id_kls").
+		Where("nilai.smt_ambil = ?", semester).
+		Group("nilai.id_pd, mahasiswa.nik, nilai.smt_ambil").
+		Count(&total).Error
+
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalKelasResponse]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan total kelas sederhana",
+		Data: GetTotalKelasResponse{
+			Total: total,
+		},
+	})
+}
+
+func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
 	req := NewListKelasRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
@@ -221,7 +359,7 @@ func (a *ApplicationServer) ListStudentKelas(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) GetTotalKelas(c *fiber.Ctx) error {
+func (a *ApplicationServer) GetTotalKelasDetails(c *fiber.Ctx) error {
 	var activeSemester string
 
 	if err := a.db.
