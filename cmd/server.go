@@ -6,17 +6,20 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
+	"log"
 )
 
 type ApplicationServer struct {
 	config *gl.Config
+	logger *log.Logger
 	db     *gorm.DB
 	router *fiber.App
 }
 
-func NewApplicationServer(db *gorm.DB, config *gl.Config, router *fiber.App) *ApplicationServer {
+func NewApplicationServer(db *gorm.DB, logger *log.Logger, config *gl.Config, router *fiber.App) *ApplicationServer {
 	app := ApplicationServer{
 		config: config,
+		logger: logger,
 		db:     db,
 		router: router,
 	}
@@ -46,12 +49,16 @@ func (a *ApplicationServer) SetupRoutes() {
 
 	a.router.Get("/api/misca/lecturers", a.WithApiKey(), a.ListLecturer)
 	a.router.Get("/api/misca/lecturers/total", a.WithApiKey(), a.GetTotalLecturer)
+
+	a.router.Get("/api/misca/classes/total", a.WithApiKey(), a.GetTotalKelas)
 }
 
 func (a *ApplicationServer) Run() {
 	host := "0.0.0.0"
 	port := fmt.Sprintf("%s", a.config.AppPort)
 	hostPort := fmt.Sprintf("%s:%s", host, port)
+
+	a.logger.Printf("Server running on %s", hostPort)
 
 	err := a.router.Listen(hostPort)
 	gl.PanicIfNeeded(err)
