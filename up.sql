@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 
 INSERT INTO api_tokens (name, token, active) VALUES ('glearning', '6qPRWChjOmfziYo0dASFKS+vnkZGxHgg', 1);
 
-CREATE TABLE sync_logs_master (
+CREATE TABLE sync_logs (
   id CHAR(26) NOT NULL PRIMARY KEY,
   id_instansi CHAR(26) DEFAULT NULL,
   entity ENUM('mahasiswa', 'dosen', 'kelas_perkuliahan') NOT NULL,
@@ -31,6 +31,6 @@ CREATE TABLE sync_logs_batches (
    error_message TEXT,
    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-   FOREIGN KEY (sync_log_id) REFERENCES sync_logs_master(id) ON DELETE CASCADE,
+   FOREIGN KEY (sync_log_id) REFERENCES sync_logs(id) ON DELETE CASCADE,
    INDEX idx_batch_id (batch_id)
 );

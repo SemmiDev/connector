@@ -58,7 +58,10 @@ func (a *ApplicationServer) SetupRoutes() {
 	a.router.Get("/api/misca/lecturers/total", a.WithApiKey(), a.GetTotalLecturer)
 
 	a.router.Get("/api/misca/classes", a.WithApiKey(), a.ListKelas)
-	a.router.Get("/api/misca/classes/total", a.WithApiKey(), a.GetTotalKelas)
+	a.router.Get("/api/misca/classes/total", a.WithApiKey(), a.TotalKelas)
+
+	a.router.Get("/api/misca/student_classes", a.WithApiKey(), a.ListStudentKelas)
+	a.router.Get("/api/misca/student_classes/total", a.WithApiKey(), a.GetTotalKelas)
 }
 
 func (a *ApplicationServer) Run() {

@@ -45,9 +45,17 @@ func (a *ApplicationServer) ListStudents(c *fiber.Ctx) error {
 	limit := req.Filter.GetLimit()
 
 	q := a.db.
-		Select(`mahasiswa_histori.id_pd AS id, mahasiswa.nama_mahasiswa, mahasiswa.jenis_kelamin, mahasiswa.nik, mahasiswa.email, mahasiswa.handphone, mahasiswa.telepon`).
+		Select(`
+		mahasiswa_histori.id_pd AS id, 
+		mahasiswa.nama_mahasiswa AS nama_mahasiswa, 
+		mahasiswa.jenis_kelamin AS jenis_kelamin, 
+		mahasiswa.nik AS nik, 
+		mahasiswa.email AS email, 
+		mahasiswa.handphone AS handphone, 
+		mahasiswa.telepon AS telepon`).
 		Table("mahasiswa_histori").
-		Joins("INNER JOIN mahasiswa ON mahasiswa_histori.id_mahasiswa = mahasiswa.id")
+		Joins("INNER JOIN mahasiswa ON mahasiswa_histori.id_mahasiswa = mahasiswa.id").
+		Where("mahasiswa.nik IS NOT NULL AND mahasiswa.nik != '' AND LENGTH(mahasiswa.nik) = 16 AND mahasiswa_histori.deleted_at IS NULL")
 
 	if req.Filter.HasKeyword() {
 		q = q.Where("mahasiswa.nama_mahasiswa LIKE ? OR mahasiswa.nik LIKE ?", "%"+req.Filter.Keyword+"%", "%"+req.Filter.Keyword+"%")
@@ -106,7 +114,7 @@ func (a *ApplicationServer) GetTotalStudents(c *fiber.Ctx) error {
 
 	err := a.db.
 		Table("mahasiswa").
-		Where("mahasiswa.deleted_at IS NULL").
+		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16 AND deleted_at IS NULL").
 		Count(&total).
 		Error
 

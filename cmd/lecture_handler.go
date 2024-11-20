@@ -46,7 +46,8 @@ func (a *ApplicationServer) ListLecturer(c *fiber.Ctx) error {
 
 	q := a.db.
 		Select(`id_ptk, nama_dosen, jenis_kelamin, nik, email, handphone, telepon`).
-		Table("dosen")
+		Table("dosen").
+		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16")
 
 	if req.Filter.HasKeyword() {
 		q = q.Where("nama_dosen LIKE ? OR nik LIKE ?", "%"+req.Filter.Keyword+"%", "%"+req.Filter.Keyword+"%")
@@ -96,7 +97,9 @@ func (a *ApplicationServer) ListLecturer(c *fiber.Ctx) error {
 func (a *ApplicationServer) GetTotalLecturer(c *fiber.Ctx) error {
 	var total int64
 
-	err := a.db.Table("dosen").Count(&total).Error
+	err := a.db.Table("dosen").Count(&total).
+		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16").
+		Error
 
 	if err != nil {
 		return HandleError(c, err)
