@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
+	fiberRecovery "github.com/gofiber/fiber/v2/middleware/recover"
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
 	"log"
@@ -25,6 +27,11 @@ func NewApplicationServer(db *gorm.DB, logger *log.Logger, config *gl.Config, ro
 	}
 
 	return &app
+}
+
+func (a *ApplicationServer) SetupCommonMiddlewares() {
+	a.router.Use(cors.New())
+	a.router.Use(fiberRecovery.New())
 }
 
 func (a *ApplicationServer) SetupHealthCheckRoutes() {

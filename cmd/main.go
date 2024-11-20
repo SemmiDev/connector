@@ -31,6 +31,7 @@ func main() {
 	})
 
 	app := NewApplicationServer(db, logger, config, router)
+	app.SetupCommonMiddlewares()
 	app.SetupHealthCheckRoutes()
 	app.SetupRoutes()
 

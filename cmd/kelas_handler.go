@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/pkg/errors"
 	"gorm.io/gorm/clause"
 	gl "lab.garudacyber.co.id/g-learning-connector"
 	"net/http"
@@ -45,8 +46,12 @@ type (
 	}
 )
 
-func convertListKelasModels(models []ListKelasModel) []ListKelasResponse {
-	var responses []ListKelasResponse
+var (
+	ErrMissmatchData = errors.New("Data mismatch: all pipe-separated fields must have the same number of elements")
+)
+
+func convertListKelasModels(models []ListKelasModel) ([]ListKelasResponse, error) {
+	responses := make([]ListKelasResponse, 0)
 
 	for _, model := range models {
 		// Split setiap kolom berdasarkan '|'
@@ -59,7 +64,7 @@ func convertListKelasModels(models []ListKelasModel) []ListKelasResponse {
 		// Pastikan semua array memiliki panjang yang sama
 		maxLen := len(idKelasList)
 		if len(namaKelasList) != maxLen || len(namaMatakuliahList) != maxLen || len(kodeMatakuliahList) != maxLen || len(idDosenPengajarList) != maxLen {
-			panic("Data mismatch: all pipe-separated fields must have the same number of elements")
+			return nil, ErrMissmatchData
 		}
 
 		// Bangun kelas_perkuliahan
@@ -83,7 +88,7 @@ func convertListKelasModels(models []ListKelasModel) []ListKelasResponse {
 		})
 	}
 
-	return responses
+	return responses, nil
 }
 
 func NewListKelasRequest() *ListKelasRequest {
@@ -138,7 +143,7 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		Joins("JOIN matakuliah_kurikulum ON matakuliah_kurikulum.id_mk_kur = kelaskuliah.id_mk_kur").
 		Joins("JOIN matakuliah ON matakuliah.id_mk = matakuliah_kurikulum.id_mk").
 		Joins("LEFT JOIN akt_ajar_dosen ON akt_ajar_dosen.id_kls = kelaskuliah.id_kls").
-		Where("nilai.smt_ambil = ?", "20241").
+		Where("nilai.smt_ambil = ?", req.Semester).
 		Group("nilai.id_pd, mahasiswa.nik, nilai.smt_ambil")
 
 	// Menambahkan pencarian berdasarkan keyword
@@ -176,7 +181,10 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	listKelasResponse := convertListKelasModels(listKelas)
+	listKelasResponse, err := convertListKelasModels(listKelas)
+	if err != nil {
+		return HandleError(c, err)
+	}
 
 	// Mengembalikan hasil sebagai JSON
 	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListKelasResponse]]{
