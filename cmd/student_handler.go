@@ -113,8 +113,9 @@ func (a *ApplicationServer) GetTotalStudents(c *fiber.Ctx) error {
 	var total int64
 
 	err := a.db.
-		Table("mahasiswa").
-		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16 AND deleted_at IS NULL").
+		Table("mahasiswa_histori").
+		Joins("INNER JOIN mahasiswa ON mahasiswa_histori.id_mahasiswa = mahasiswa.id").
+		Where("mahasiswa.nik IS NOT NULL AND mahasiswa.nik != '' AND LENGTH(mahasiswa.nik) = 16 AND mahasiswa_histori.deleted_at IS NULL").
 		Count(&total).
 		Error
 
