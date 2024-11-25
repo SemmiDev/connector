@@ -28,6 +28,10 @@ func NewFilterPagination() Filter {
 	}
 }
 
+func (f *Filter) HasLimit() bool {
+	return f.GetLimit() > 0
+}
+
 func (f *Filter) GetLimit() int64 {
 	return f.PerPage
 }
