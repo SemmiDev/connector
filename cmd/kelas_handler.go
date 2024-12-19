@@ -502,7 +502,7 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
             SEPARATOR '|'
         ) AS jadwal,
         GROUP_CONCAT(
-            DISTINCT ruangan.nama_ruangan
+            ruangan.nama_ruangan
             ORDER BY ruangan.nama_ruangan ASC
             SEPARATOR '|'
         ) AS nama_ruangan
