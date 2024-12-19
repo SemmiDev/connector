@@ -411,7 +411,8 @@ type ListKelasResponse struct {
     IDPTKDosenPengajar string `json:"id_dosen_pengajar" gorm:"column:id_dosen_pengajar"`
     Semester           string `json:"semester" gorm:"column:semester"`
     Jadwal             string `json:"jadwal" gorm:"column:jadwal"`
-    NamaRuangan        string `json:"nama_ruangan" gorm:"column:nama_ruangan"` // TODO
+    NamaRuangan        string `json:"nama_ruangan" gorm:"column:nama_ruangan"`
+    TotalPertemuan     string `json:"total_pertemuan" gorm:"column:total_pertemuan"`
 }
 
 func (a *ApplicationServer) TotalKelas(c *fiber.Ctx) error {
@@ -505,7 +506,12 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
             ruangan.nama_ruangan
             ORDER BY ruangan.nama_ruangan ASC
             SEPARATOR '|'
-        ) AS nama_ruangan
+        ) AS nama_ruangan,
+        GROUP_CONCAT(
+            akt_ajar_dosen.temu_rencana
+            ORDER BY akt_ajar_dosen.temu_rencana ASC
+            SEPARATOR '|'
+        ) AS total_pertemuan
     `).
         Joins("JOIN matakuliah_kurikulum ON matakuliah_kurikulum.id_mk_kur = kelaskuliah.id_mk_kur").
         Joins("JOIN matakuliah ON matakuliah.id_mk = matakuliah_kurikulum.id_mk").
