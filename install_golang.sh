@@ -8,7 +8,7 @@ echo "Memulai instalasi Golang terbaru..."
 
 # 1. Tentukan URL untuk versi terbaru
 #GO_LATEST=$(curl -s https://go.dev/VERSION?m=text)
-GO_LATEST=go1.22.1
+GO_LATEST=go1.24.0
 GO_URL="https://go.dev/dl/${GO_LATEST}.linux-amd64.tar.gz"
 
 # 2. Unduh Golang terbaru

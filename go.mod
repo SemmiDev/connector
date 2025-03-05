@@ -1,6 +1,6 @@
 module lab.garudacyber.co.id/g-learning-connector
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/alitto/pond/v2 v2.1.4
