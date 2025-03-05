@@ -1,9 +1,10 @@
-## G-Learning-Connector
+## G Learning Connector API
 
-### How to set up on production
+### Cara install di production
 - Clone the repository `git clone git@lab.garudacyber.co.id:g-learning/connector.git`
-- CD into the repository `cd connector`
-- Install Go `make install-golang`
+- Move into the repository `cd connector`
+- Install Go `sudo make install-golang`
+- Build the binary `make rebuild`
 - Run `make deploy`
 
 ### Show the process logs
