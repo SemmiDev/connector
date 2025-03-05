@@ -25,7 +25,7 @@ tar -C /usr/local -xzf "${GO_LATEST}.linux-amd64.tar.gz"
 
 # 5. Hapus file unduhan
 echo "Membersihkan file unduhan..."
-rm "${GO_LATEST}.linux-amd64.tar.gz"
+rm -rf "${GO_LATEST}.linux-amd64.tar.gz"
 
 # 6. Tambahkan Go ke PATH untuk semua user
 if ! grep -q "export PATH=\$PATH:/usr/local/go/bin" /etc/profile; then
