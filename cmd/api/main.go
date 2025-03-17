@@ -10,18 +10,21 @@ import (
 )
 
 func main() {
-	handler := slog.NewJSONHandler(os.Stdout, nil)
-	logger := slog.NewLogLogger(handler, slog.LevelInfo)
+	// setup logger
+	loggerOptions := slog.HandlerOptions{AddSource: true, Level: slog.LevelInfo}
+	handler := slog.NewJSONHandler(os.Stdout, &loggerOptions)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
 	config, err := gl.NewConfig()
 	gl.PanicIfNeeded(err)
 
-	logger.Println("Config loaded successfully")
+	slog.Info("Config loaded successfully")
 
 	db, err := gl.NewMySQLDatabase(config)
 	gl.PanicIfNeeded(err)
 
-	logger.Println("Database connected successfully")
+	slog.Info("Database connected successfully")
 
 	router := fiber.New(fiber.Config{
 		AppName:      config.AppName,

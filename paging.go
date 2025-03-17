@@ -4,12 +4,6 @@ import (
 	"fmt"
 )
 
-func PanicIfNeeded(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 // PageInfo: struct untuk menyimpan informasi halaman yang sedang ditampilkan.
 // UI example:
 // Menampilkan 10 dari 50 data < 1 2 (3) 4 5 > ➡️ Menampilkan [TotalDataInCurrentPage] dari [TotalData] data

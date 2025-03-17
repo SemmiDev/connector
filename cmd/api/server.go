@@ -8,17 +8,17 @@ import (
 	fiberRecovery "github.com/gofiber/fiber/v2/middleware/recover"
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
-	"log"
+	"log/slog"
 )
 
 type ApplicationServer struct {
 	config *gl.Config
-	logger *log.Logger
+	logger *slog.Logger
 	db     *gorm.DB
 	router *fiber.App
 }
 
-func NewApplicationServer(db *gorm.DB, logger *log.Logger, config *gl.Config, router *fiber.App) *ApplicationServer {
+func NewApplicationServer(db *gorm.DB, logger *slog.Logger, config *gl.Config, router *fiber.App) *ApplicationServer {
 	app := ApplicationServer{
 		config: config,
 		logger: logger,
@@ -72,7 +72,7 @@ func (a *ApplicationServer) Run() {
 	port := fmt.Sprintf("%s", a.config.AppPort)
 	hostPort := fmt.Sprintf("%s:%s", host, port)
 
-	a.logger.Printf("Server running on %s", hostPort)
+	a.logger.With(slog.String("host", host), slog.String("port", port)).Info("Server started")
 
 	err := a.router.Listen(hostPort)
 	gl.PanicIfNeeded(err)
