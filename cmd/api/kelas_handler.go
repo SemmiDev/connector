@@ -56,34 +56,46 @@ func convertListKelasModels(models []ListStudentKelasModel) ([]ListStudentKelasR
 	responses := make([]ListStudentKelasResponse, 0)
 
 	for _, model := range models {
-		// Split setiap kolom berdasarkan '|'
+		// Get the length of idKelasList as single source of truth
 		idKelasList := strings.Split(model.IDKelas, "|")
+		maxLen := len(idKelasList)
+
+		// Safely split other fields and ensure they have at least maxLen elements
+		safeGetElement := func(list []string, idx int) string {
+			if idx < len(list) {
+				return list[idx]
+			}
+			return "" // Return empty string for missing elements
+		}
+
+		// Split all fields
 		namaKelasList := strings.Split(model.NamaKelas, "|")
 		namaMatakuliahList := strings.Split(model.NamaMataKuliah, "|")
 		kodeMatakuliahList := strings.Split(model.KodeMataKuliah, "|")
 		idDosenPengajarList := strings.Split(model.IDPTKDosenPengajar, "|")
-		jadwalList := strings.Split(model.Jadwal, "|")
 
-		// Pastikan semua array memiliki panjang yang sama
-		maxLen := len(idKelasList)
-		if len(namaKelasList) != maxLen || len(namaMatakuliahList) != maxLen || len(kodeMatakuliahList) != maxLen || len(idDosenPengajarList) != maxLen || len(jadwalList) != maxLen {
-			return nil, ErrMismatchData
+		// Handle jadwal field which might be completely empty
+		var jadwalList []string
+		if model.Jadwal != "" {
+			jadwalList = strings.Split(model.Jadwal, "|")
+		} else {
+			jadwalList = make([]string, maxLen) // Create empty list with correct length
 		}
 
-		// Bangun kelas_perkuliahan
+		// Build kelasPerkuliahan with safe access
 		kelasPerkuliahan := make([]KelasPerkuliahan, maxLen)
 		for i := 0; i < maxLen; i++ {
 			kelasPerkuliahan[i] = KelasPerkuliahan{
 				IDKelas:         idKelasList[i],
-				NamaKelas:       namaKelasList[i],
-				NamaMatakuliah:  namaMatakuliahList[i],
-				KodeMatakuliah:  kodeMatakuliahList[i],
-				IDDosenPengajar: idDosenPengajarList[i],
-				Jadwal:          jadwalList[i],
+				NamaKelas:       safeGetElement(namaKelasList, i),
+				NamaMatakuliah:  safeGetElement(namaMatakuliahList, i),
+				KodeMatakuliah:  safeGetElement(kodeMatakuliahList, i),
+				IDDosenPengajar: safeGetElement(idDosenPengajarList, i),
+				Jadwal:          safeGetElement(jadwalList, i),
 			}
 		}
 
-		// Tambahkan ke response
+		// Add to response
 		responses = append(responses, ListStudentKelasResponse{
 			IDPesertaDidik:   model.IDPesertaDidik,
 			Nik:              model.NIK,
@@ -341,10 +353,24 @@ func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
+	//for _, v := range listKelas {
+	//	fmt.Println(v.IDPesertaDidik)
+	//	fmt.Println(v.NIK)
+	//	fmt.Println(v.IDKelas)
+	//	fmt.Println(v.NamaKelas)
+	//	fmt.Println(v.NamaMataKuliah)
+	//	fmt.Println(v.KodeMataKuliah)
+	//	fmt.Println(v.IDPTKDosenPengajar)
+	//	fmt.Println(v.Semester)
+	//	fmt.Println(v.Jadwal)
+	//}
+
 	listKelasResponse, err := convertListKelasModels(listKelas)
 	if err != nil {
 		return HandleError(c, err)
 	}
+
+	//listKelasResponse := make([]ListStudentKelasResponse, len(listKelas))
 
 	// Mengembalikan hasil sebagai JSON
 	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListStudentKelasResponse]]{
