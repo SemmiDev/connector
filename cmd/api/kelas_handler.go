@@ -1,12 +1,13 @@
 package main
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"gorm.io/gorm/clause"
 	gl "lab.garudacyber.co.id/g-learning-connector"
-	"net/http"
-	"strings"
 )
 
 type (
@@ -429,16 +430,18 @@ func (a *ApplicationServer) GetTotalKelasDetails(c *fiber.Ctx) error {
 	})
 }
 
+// ListKelasResponse defines the structure for class list response
 type ListKelasResponse struct {
-	IDKelas            string `json:"id_kelas" gorm:"column:id_kelas"`
-	NamaKelas          string `json:"nama_kelas" gorm:"column:nama_kelas"`
-	NamaMataKuliah     string `json:"nama_matakuliah" gorm:"column:nama_matakuliah"`
-	KodeMataKuliah     string `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
-	IDPTKDosenPengajar string `json:"id_dosen_pengajar" gorm:"column:id_dosen_pengajar"`
-	Semester           string `json:"semester" gorm:"column:semester"`
-	Jadwal             string `json:"jadwal" gorm:"column:jadwal"`
-	NamaRuangan        string `json:"nama_ruangan" gorm:"column:nama_ruangan"`
-	TotalPertemuan     string `json:"total_pertemuan" gorm:"column:total_pertemuan"`
+	IDKelas            string   `json:"id_kelas" gorm:"column:id_kelas"`
+	NamaKelas          string   `json:"nama_kelas" gorm:"column:nama_kelas"`
+	NamaMataKuliah     string   `json:"nama_matakuliah" gorm:"column:nama_matakuliah"`
+	KodeMataKuliah     string   `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
+	IDDosenPengajar    []string `json:"id_dosen_pengajar"`
+	IDDosenPengajarStr string   `gorm:"column:id_dosen_pengajar"`
+	Semester           string   `json:"semester" gorm:"column:semester"`
+	Jadwal             string   `json:"jadwal" gorm:"column:jadwal"`
+	NamaRuangan        string   `json:"nama_ruangan" gorm:"column:nama_ruangan"`
+	TotalPertemuan     string   `json:"total_pertemuan" gorm:"column:total_pertemuan"`
 }
 
 func (a *ApplicationServer) TotalKelas(c *fiber.Ctx) error {
@@ -474,6 +477,7 @@ func (a *ApplicationServer) TotalKelas(c *fiber.Ctx) error {
 	})
 }
 
+// ListKelas handles the listing of classes with multiple lecturers
 func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 	req := NewListKelasRequest()
 	if err := c.QueryParser(req); err != nil {
@@ -491,12 +495,12 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	// set default semester
+	// Set default semester
 	if req.Semester == "" {
 		req.Semester = activeSemester
 	}
 
-	// Model untuk menampung hasil query
+	// Model to hold query results
 	listKelas := make([]ListKelasResponse, 0)
 
 	offset := req.Filter.GetOffset()
@@ -505,40 +509,45 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 	q := a.db.
 		Table("kelaskuliah").
 		Select(`
-        kelaskuliah.id_kls AS id_kelas,
-        kelaskuliah.nm_kls AS nama_kelas,
-        matakuliah.nm_mk AS nama_matakuliah,
-        matakuliah.kode_mk AS kode_matakuliah,
-        akt_mengajar_dosen.id_ptk AS id_dosen_pengajar,
-        kelaskuliah.id_smt AS semester,
-        GROUP_CONCAT(
-            CONCAT(
-            CASE jadwal.hari
-                WHEN '1' THEN 'Senin'
-                WHEN '2' THEN 'Selasa'
-                WHEN '3' THEN 'Rabu'
-                WHEN '4' THEN 'Kamis'
-                WHEN '5' THEN 'Jumat'
-                WHEN '6' THEN 'Sabtu'
-                WHEN '7' THEN 'Minggu'
-                ELSE 'Unknown'
-            END,
-            '-', jadwal.jam_mulai,
-            '-', jadwal.jam_selesai)
-            ORDER BY jadwal.hari, jadwal.jam_mulai ASC
-            SEPARATOR '|'
-        ) AS jadwal,
-        GROUP_CONCAT(
-            ruangan.nama_ruangan
-            ORDER BY ruangan.nama_ruangan ASC
-            SEPARATOR '|'
-        ) AS nama_ruangan,
-        GROUP_CONCAT(
-            akt_mengajar_dosen.temu_rencana
-            ORDER BY akt_mengajar_dosen.temu_rencana ASC
-            SEPARATOR '|'
-        ) AS total_pertemuan
-    `).
+			kelaskuliah.id_kls AS id_kelas,
+			kelaskuliah.nm_kls AS nama_kelas,
+			matakuliah.nm_mk AS nama_matakuliah,
+			matakuliah.kode_mk AS kode_matakuliah,
+			GROUP_CONCAT(
+				DISTINCT CAST(akt_mengajar_dosen.id_ptk AS CHAR)
+				ORDER BY akt_mengajar_dosen.id_ptk ASC
+				SEPARATOR '|'
+			) AS id_dosen_pengajar,
+			kelaskuliah.id_smt AS semester,
+			GROUP_CONCAT(
+				CONCAT(
+					CASE jadwal.hari
+						WHEN '1' THEN 'Senin'
+						WHEN '2' THEN 'Selasa'
+						WHEN '3' THEN 'Rabu'
+						WHEN '4' THEN 'Kamis'
+						WHEN '5' THEN 'Jumat'
+						WHEN '6' THEN 'Sabtu'
+						WHEN '7' THEN 'Minggu'
+						ELSE 'Unknown'
+					END,
+					'-', jadwal.jam_mulai,
+					'-', jadwal.jam_selesai
+				)
+				ORDER BY jadwal.hari, jadwal.jam_mulai ASC
+				SEPARATOR '|'
+			) AS jadwal,
+			GROUP_CONCAT(
+				ruangan.nama_ruangan
+				ORDER BY ruangan.nama_ruangan ASC
+				SEPARATOR '|'
+			) AS nama_ruangan,
+			GROUP_CONCAT(
+				akt_mengajar_dosen.temu_rencana
+				ORDER BY akt_mengajar_dosen.temu_rencana ASC
+				SEPARATOR '|'
+			) AS total_pertemuan
+		`).
 		Joins("JOIN matakuliah_kurikulum ON matakuliah_kurikulum.id_mk_kur = kelaskuliah.id_mk_kur").
 		Joins("JOIN matakuliah ON matakuliah.id_mk = matakuliah_kurikulum.id_mk").
 		Joins("LEFT JOIN akt_mengajar_dosen ON akt_mengajar_dosen.id_kls = kelaskuliah.id_kls").
@@ -547,12 +556,12 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		Where("kelaskuliah.id_smt = ?", req.Semester).
 		Group("kelaskuliah.id_kls")
 
-	// Menambahkan pencarian berdasarkan keyword
+	// Add keyword search
 	if req.Filter.HasKeyword() {
 		q = q.Where("kelaskuliah.nm_kls LIKE ?", "%"+req.Filter.Keyword+"%")
 	}
 
-	// Menambahkan sorting
+	// Add sorting
 	if req.Filter.HasSort() {
 		q = q.Order(clause.OrderByColumn{
 			Column: clause.Column{Name: req.Filter.SortBy},
@@ -562,27 +571,36 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		q = q.Order("kelaskuliah.id_kls ASC")
 	}
 
-	// Menghitung jumlah total data
+	// Count total data
 	var totalData int64
 	if err := q.Count(&totalData).Error; err != nil {
 		return HandleError(c, err)
 	}
 
-	// Menambahkan limit dan offset
+	// Add limit and offset
 	q = q.Offset(int(offset)).Limit(int(limit))
 
-	// Eksekusi query
+	// Execute query
 	if err := q.Scan(&listKelas).Error; err != nil {
 		return HandleError(c, err)
 	}
 
-	// Membuat informasi paginasi
+	// Post-process id_dosen_pengajar to convert pipe-separated string to slice
+	for i := range listKelas {
+		if listKelas[i].IDDosenPengajarStr != "" {
+			listKelas[i].IDDosenPengajar = strings.Split(listKelas[i].IDDosenPengajarStr, "|")
+		} else {
+			listKelas[i].IDDosenPengajar = []string{}
+		}
+	}
+
+	// Create pagination info
 	pageInfo, err := gl.NewPageInfo(req.Filter.CurrentPage, limit, offset, totalData)
 	if err != nil {
 		return HandleError(c, err)
 	}
 
-	// Mengembalikan hasil sebagai JSON
+	// Return result as JSON
 	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListKelasResponse]]{
 		Code:    fiber.StatusOK,
 		Status:  http.StatusText(fiber.StatusOK),
