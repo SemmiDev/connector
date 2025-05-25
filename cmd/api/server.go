@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
@@ -10,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -68,6 +70,9 @@ func (a *ApplicationServer) SetupRoutes() {
 
 	a.router.Get("/api/misca/student_classes_details", a.WithApiKey(), a.ListStudentKelasDetails)
 	a.router.Get("/api/misca/student_classes_details/total", a.WithApiKey(), a.GetTotalKelasDetails)
+
+	a.router.Get("/api/misca/rooms", a.WithApiKey(), a.ListRooms)
+	a.router.Get("/api/misca/rooms/total", a.WithApiKey(), a.GetTotalRooms)
 
 	a.router.Get("/api/misca/tes", a.Test)
 }
@@ -234,5 +239,58 @@ func (a *ApplicationServer) Test(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"kelas_kuliah":             kelasKuliah,
 		"kelas_kuliah_bobot_nilai": bobotKelasKuliah,
+	})
+}
+
+func (a *ApplicationServer) ListRooms(c *fiber.Ctx) error {
+	var rooms []Ruangan
+	if err := a.db.Table("ruangan").Find(&rooms).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	var response []RuanganResponse
+	for _, r := range rooms {
+		var idsms []string
+		json.Unmarshal([]byte(r.IDSMSRaw), &idsms) // parsing string JSON ke slice
+
+		response = append(response, RuanganResponse{
+			IDRuangan:      r.IDRuangan,
+			IDSMS:          idsms,
+			NamaRuangan:    r.NamaRuangan,
+			IDJenisRuangan: r.IDJenisRuangan,
+			KodeRuangan:    r.KodeRuangan,
+			Keterangan:     r.Keterangan,
+			Kapasitas:      r.Kapasitas,
+			CreatedAt:      r.CreatedAt,
+			UpdatedAt:      r.UpdatedAt,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[RuanganResponse]]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan data ruangan",
+		Data: ListDataApiResponseWrapper[RuanganResponse]{
+			List: response,
+		},
+	})
+}
+
+func (a *ApplicationServer) GetTotalRooms(c *fiber.Ctx) error {
+	var total int64
+	err := a.db.Table("ruangan").Count(&total).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalStudentsResponse]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan total mahasiswa",
+		Data: GetTotalStudentsResponse{
+			Total: total,
+		},
 	})
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
@@ -46,6 +47,32 @@ type (
 		IDPTKDosenPengajar string `json:"id_dosen_pengajar" gorm:"column:id_dosen_pengajar"`
 		Semester           string `json:"semester" gorm:"column:semester"`
 		Jadwal             string `json:"jadwal" gorm:"column:jadwal"`
+	}
+
+	Ruangan struct {
+		IDRuangan      string    `json:"id_ruangan" gorm:"type:varchar(255)"`
+		IDSMSRaw       string    `json:"id_sms" gorm:"column:id_sms"`
+		NamaRuangan    string    `json:"nama_ruangan" gorm:"type:varchar(255)"`
+		IDJenisRuangan string    `json:"id_jenis_ruangan" gorm:"type:varchar(255)"`
+		KodeRuangan    string    `json:"kode_ruangan" gorm:"type:varchar(191)"`
+		Keterangan     string    `json:"keterangan" gorm:"type:text"`
+		Kapasitas      int       `json:"kapasitas" gorm:"type:int"`
+		IDInstansi     string    `json:"id_instansi" gorm:"type:char(26)"`
+		CreatedAt      time.Time `json:"created_at" gorm:"type:timestamp;default:null"`
+		UpdatedAt      time.Time `json:"updated_at" gorm:"type:timestamp;default:null"`
+	}
+
+	RuanganResponse struct {
+		IDRuangan      string    `json:"id_ruangan" gorm:"type:varchar(255)"`
+		IDSMS          []string  `json:"id_sms"`
+		NamaRuangan    string    `json:"nama_ruangan" gorm:"type:varchar(255)"`
+		IDJenisRuangan string    `json:"id_jenis_ruangan" gorm:"type:varchar(255)"`
+		KodeRuangan    string    `json:"kode_ruangan" gorm:"type:varchar(191)"`
+		Keterangan     string    `json:"keterangan" gorm:"type:text"`
+		Kapasitas      int       `json:"kapasitas" gorm:"type:int"`
+		IDInstansi     string    `json:"id_instansi" gorm:"type:char(26)"`
+		CreatedAt      time.Time `json:"created_at" gorm:"type:timestamp;default:null"`
+		UpdatedAt      time.Time `json:"updated_at" gorm:"type:timestamp;default:null"`
 	}
 )
 
