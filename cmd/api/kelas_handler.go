@@ -106,6 +106,7 @@ type (
 		JenjLanjutan        *string    `json:"jenj_lanjutan" gorm:"column:jenj_lanjutan"`
 		StatusProfesi       *string    `json:"status_profesi" gorm:"column:status_profesi"`
 		KodeNIM             *string    `json:"kode_nim" gorm:"column:kode_nim"`
+		NamaJenjangDidik    *string    `json:"nama_jenjang_didik" gorm:"column:nama_jenjang_didik"`
 		CreatedAt           *time.Time `json:"created_at" gorm:"column:created_at"`
 		UpdatedAt           *time.Time `json:"updated_at" gorm:"column:updated_at"`
 	}

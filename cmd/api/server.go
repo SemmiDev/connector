@@ -301,7 +301,10 @@ func (a *ApplicationServer) GetTotalRooms(c *fiber.Ctx) error {
 
 func (a *ApplicationServer) ListSMS(c *fiber.Ctx) error {
 	var sms []SMS
-	if err := a.db.Table("sms").Find(&sms).Error; err != nil {
+	if err := a.db.Table("sms").
+		Select("sms.*,jenjang_pendidikan.nama_jenjang_didik AS nama_jenjang_didik").
+		Joins("LEFT JOIN jenjang_pendidikan ON sms.id_jenj_didik = jenjang_pendidikan.id_jenjang_didik").
+		Scan(&sms).Error; err != nil {
 		return HandleError(c, err)
 	}
 
