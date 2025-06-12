@@ -23,6 +23,7 @@ type (
 
 	KelasPerkuliahan struct {
 		IDKelas         string `json:"id_kelas"`
+		IDSMS           string `json:"id_sms"`
 		NamaKelas       string `json:"nama_kelas"`
 		NamaMatakuliah  string `json:"nama_matakuliah"`
 		KodeMatakuliah  string `json:"kode_matakuliah"`
@@ -41,6 +42,7 @@ type (
 		IDPesertaDidik     string `json:"id_pd" gorm:"column:id_pd"`
 		NIK                string `json:"nik" gorm:"column:nik"`
 		IDKelas            string `json:"id_kelas" gorm:"column:id_kelas"`
+		IDSMS              string `json:"id_sms" gorm:"column:id_sms"`
 		NamaKelas          string `json:"nama_kelas" gorm:"column:nama_kelas"`
 		NamaMataKuliah     string `json:"nama_matakuliah" gorm:"column:nama_matakuliah"`
 		KodeMataKuliah     string `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
@@ -74,6 +76,39 @@ type (
 		CreatedAt      time.Time `json:"created_at" gorm:"type:timestamp;default:null"`
 		UpdatedAt      time.Time `json:"updated_at" gorm:"type:timestamp;default:null"`
 	}
+
+	SMS struct {
+		IDSms               string     `json:"id_sms" gorm:"column:id_sms;primaryKey"`
+		NmLemb              string     `json:"nm_lemb" gorm:"column:nm_lemb"`
+		NmLembInggris       *string    `json:"nm_lemb_inggris" gorm:"column:nm_lemb_inggris"`
+		IDJenjangDidik      *int64     `json:"id_jenj_didik" gorm:"column:id_jenj_didik"`
+		IDJenisSms          *int64     `json:"id_jns_sms" gorm:"column:id_jns_sms"`
+		IDIndukSms          *string    `json:"id_induk_sms" gorm:"column:id_induk_sms"`
+		KodeSms             *string    `json:"kode_sms" gorm:"column:kode_sms"`
+		UUID                *string    `json:"uuid" gorm:"column:uuid"`
+		BukaKrs             *bool      `json:"buka_krs" gorm:"column:buka_krs"`
+		BukaNilai           *bool      `json:"buka_nilai" gorm:"column:buka_nilai"`
+		BukaKhs             *bool      `json:"buka_khs" gorm:"column:buka_khs"`
+		BukaKuesioner       *bool      `json:"buka_kuesioner" gorm:"column:buka_kuesioner"`
+		BukaTranskrip       *bool      `json:"buka_transkrip" gorm:"column:buka_transkrip"`
+		BukaKartuUjian      *bool      `json:"buka_kartu_ujian" gorm:"column:buka_kartu_ujian"`
+		MulaiIsiKrs         *time.Time `json:"mulai_isi_krs" gorm:"column:mulai_isi_krs"`
+		AkhirIsiKrs         *time.Time `json:"akhir_isi_krs" gorm:"column:akhir_isi_krs"`
+		MulaiIsiNilai       *time.Time `json:"mulai_isi_nilai" gorm:"column:mulai_isi_nilai"`
+		AkhirIsiNilai       *time.Time `json:"akhir_isi_nilai" gorm:"column:akhir_isi_nilai"`
+		BebanStudi          *string    `json:"beban_studi" gorm:"column:beban_studi"`
+		PenjadwalanBlok     *string    `json:"penjadwalan_blok" gorm:"column:penjadwalan_blok"`
+		Gelar               *string    `json:"gelar" gorm:"column:gelar"`
+		GelarSingkatan      *string    `json:"gelar_singkatan" gorm:"column:gelar_singkatan"`
+		JenjKualifikasiKKNI *string    `json:"jenj_kualifikasi_kkni" gorm:"column:jenj_kualifikasi_kkni"`
+		PersyaratanMasuk    *string    `json:"persyaratan_penerimaan" gorm:"column:persyaratan_penerimaan"`
+		LamaStudi           *string    `json:"lama_studi" gorm:"column:lama_studi"`
+		JenjLanjutan        *string    `json:"jenj_lanjutan" gorm:"column:jenj_lanjutan"`
+		StatusProfesi       *string    `json:"status_profesi" gorm:"column:status_profesi"`
+		KodeNIM             *string    `json:"kode_nim" gorm:"column:kode_nim"`
+		CreatedAt           *time.Time `json:"created_at" gorm:"column:created_at"`
+		UpdatedAt           *time.Time `json:"updated_at" gorm:"column:updated_at"`
+	}
 )
 
 var (
@@ -97,6 +132,7 @@ func convertListKelasModels(models []ListStudentKelasModel) ([]ListStudentKelasR
 		}
 
 		// Split all fields
+		smsKelasList := strings.Split(model.IDSMS, "|")
 		namaKelasList := strings.Split(model.NamaKelas, "|")
 		namaMatakuliahList := strings.Split(model.NamaMataKuliah, "|")
 		kodeMatakuliahList := strings.Split(model.KodeMataKuliah, "|")
@@ -115,6 +151,7 @@ func convertListKelasModels(models []ListStudentKelasModel) ([]ListStudentKelasR
 		for i := 0; i < maxLen; i++ {
 			kelasPerkuliahan[i] = KelasPerkuliahan{
 				IDKelas:         idKelasList[i],
+				IDSMS:           safeGetElement(smsKelasList, i),
 				NamaKelas:       safeGetElement(namaKelasList, i),
 				NamaMatakuliah:  safeGetElement(namaMatakuliahList, i),
 				KodeMatakuliah:  safeGetElement(kodeMatakuliahList, i),
@@ -313,6 +350,7 @@ func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
 			nilai.id_pd AS id_pd,
 			mahasiswa.nik AS nik,
 			GROUP_CONCAT(kelaskuliah.id_kls ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS id_kelas,
+			GROUP_CONCAT(kelaskuliah.id_sms ORDER BY kelaskuliah.id_sms SEPARATOR '|') AS id_sms,
 			GROUP_CONCAT(kelaskuliah.nm_kls ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS nama_kelas,
 			GROUP_CONCAT(matakuliah.nm_mk ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS nama_matakuliah,
 			GROUP_CONCAT(matakuliah.kode_mk ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS kode_matakuliah,
@@ -460,6 +498,7 @@ func (a *ApplicationServer) GetTotalKelasDetails(c *fiber.Ctx) error {
 // ListKelasResponse defines the structure for class list response
 type ListKelasResponse struct {
 	IDKelas            string   `json:"id_kelas" gorm:"column:id_kelas"`
+	IDSMS              string   `json:"id_sms" gorm:"column:id_sms"`
 	NamaKelas          string   `json:"nama_kelas" gorm:"column:nama_kelas"`
 	NamaMataKuliah     string   `json:"nama_matakuliah" gorm:"column:nama_matakuliah"`
 	KodeMataKuliah     string   `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
@@ -537,6 +576,7 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		Table("kelaskuliah").
 		Select(`
 			kelaskuliah.id_kls AS id_kelas,
+			kelaskuliah.id_sms AS id_sms,
 			kelaskuliah.nm_kls AS nama_kelas,
 			matakuliah.nm_mk AS nama_matakuliah,
 			matakuliah.kode_mk AS kode_matakuliah,

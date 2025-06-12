@@ -3,6 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -10,10 +15,6 @@ import (
 	fiberRecovery "github.com/gofiber/fiber/v2/middleware/recover"
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
-	"log/slog"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 type ApplicationServer struct {
@@ -73,6 +74,9 @@ func (a *ApplicationServer) SetupRoutes() {
 
 	a.router.Get("/api/misca/rooms", a.WithApiKey(), a.ListRooms)
 	a.router.Get("/api/misca/rooms/total", a.WithApiKey(), a.GetTotalRooms)
+
+	a.router.Get("/api/misca/sms", a.WithApiKey(), a.ListSMS)
+	a.router.Get("/api/misca/sms/total", a.WithApiKey(), a.GetTotalSMS)
 
 	a.router.Get("/api/misca/tes", a.Test)
 }
@@ -289,6 +293,41 @@ func (a *ApplicationServer) GetTotalRooms(c *fiber.Ctx) error {
 		Status:  http.StatusText(fiber.StatusOK),
 		Success: true,
 		Message: "Sukses mendapatkan total mahasiswa",
+		Data: GetTotalStudentsResponse{
+			Total: total,
+		},
+	})
+}
+
+func (a *ApplicationServer) ListSMS(c *fiber.Ctx) error {
+	var sms []SMS
+	if err := a.db.Table("sms").Find(&sms).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[SMS]]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan data ruangan",
+		Data: ListDataApiResponseWrapper[SMS]{
+			List: sms,
+		},
+	})
+}
+
+func (a *ApplicationServer) GetTotalSMS(c *fiber.Ctx) error {
+	var total int64
+	err := a.db.Table("sms").Count(&total).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalStudentsResponse]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan total sms",
 		Data: GetTotalStudentsResponse{
 			Total: total,
 		},
