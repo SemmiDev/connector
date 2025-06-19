@@ -33,6 +33,7 @@ type (
 
 	ListStudentKelasResponse struct {
 		IDPesertaDidik   string             `json:"id_pd"`
+		IDMahasiswa      string             `json:"id_mahasiswa"`
 		Nik              string             `json:"nik"`
 		Semester         string             `json:"semester"`
 		KelasPerkuliahan []KelasPerkuliahan `json:"kelas_perkuliahan"`
@@ -40,6 +41,7 @@ type (
 
 	ListStudentKelasModel struct {
 		IDPesertaDidik     string `json:"id_pd" gorm:"column:id_pd"`
+		IDMahasiswa        string `json:"id_mahasiswa" gorm:"column:id_mahasiswa"`
 		NIK                string `json:"nik" gorm:"column:nik"`
 		IDKelas            string `json:"id_kelas" gorm:"column:id_kelas"`
 		IDSMS              string `json:"id_sms" gorm:"column:id_sms"`
@@ -164,6 +166,7 @@ func convertListKelasModels(models []ListStudentKelasModel) ([]ListStudentKelasR
 		// Add to response
 		responses = append(responses, ListStudentKelasResponse{
 			IDPesertaDidik:   model.IDPesertaDidik,
+			IDMahasiswa:      model.IDMahasiswa,
 			Nik:              model.NIK,
 			Semester:         model.Semester,
 			KelasPerkuliahan: kelasPerkuliahan,
@@ -180,10 +183,11 @@ func NewListKelasRequest() *ListStudentKelasRequest {
 }
 
 type ListSimpleStudentKelas struct {
-	IDPd     string `json:"id_pd"`
-	NIK      string `json:"nik"`
-	IDKelas  string `json:"id_kelas"`
-	Semester string `json:"semester"`
+	IDPd        string `json:"id_pd"`
+	IDMahasiswa string `json:"id_mahasiswa"`
+	NIK         string `json:"nik"`
+	IDKelas     string `json:"id_kelas"`
+	Semester    string `json:"semester"`
 }
 
 func (a *ApplicationServer) ListSimpleStudentKelas(c *fiber.Ctx) error {
@@ -219,6 +223,7 @@ func (a *ApplicationServer) ListSimpleStudentKelas(c *fiber.Ctx) error {
 	q := a.db.Table("nilai").
 		Select(`
 			nilai.id_pd AS id_pd,
+			mahasiswa.id AS id_mahasiswa,
 			mahasiswa.nik AS nik,
 			GROUP_CONCAT(kelaskuliah.id_kls ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS id_kelas,
 			nilai.smt_ambil AS semester
@@ -349,6 +354,7 @@ func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
 	q := a.db.Table("nilai").
 		Select(`
 			nilai.id_pd AS id_pd,
+			mahasiswa.id AS id_mahasiswa,
 			mahasiswa.nik AS nik,
 			GROUP_CONCAT(kelaskuliah.id_kls ORDER BY kelaskuliah.id_kls SEPARATOR '|') AS id_kelas,
 			GROUP_CONCAT(kelaskuliah.id_sms ORDER BY kelaskuliah.id_sms SEPARATOR '|') AS id_sms,
@@ -420,24 +426,10 @@ func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	//for _, v := range listKelas {
-	//	fmt.Println(v.IDPesertaDidik)
-	//	fmt.Println(v.NIK)
-	//	fmt.Println(v.IDKelas)
-	//	fmt.Println(v.NamaKelas)
-	//	fmt.Println(v.NamaMataKuliah)
-	//	fmt.Println(v.KodeMataKuliah)
-	//	fmt.Println(v.IDPTKDosenPengajar)
-	//	fmt.Println(v.Semester)
-	//	fmt.Println(v.Jadwal)
-	//}
-
 	listKelasResponse, err := convertListKelasModels(listKelas)
 	if err != nil {
 		return HandleError(c, err)
 	}
-
-	//listKelasResponse := make([]ListStudentKelasResponse, len(listKelas))
 
 	// Mengembalikan hasil sebagai JSON
 	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListStudentKelasResponse]]{

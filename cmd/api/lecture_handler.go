@@ -1,10 +1,11 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm/clause"
 	gl "lab.garudacyber.co.id/g-learning-connector"
-	"net/http"
 )
 
 type (
@@ -44,8 +45,7 @@ func (a *ApplicationServer) ListLecturer(c *fiber.Ctx) error {
 	offset := req.Filter.GetOffset()
 	limit := req.Filter.GetLimit()
 
-	q := a.db.
-		Select(`id_ptk, nama_dosen, jenis_kelamin, nik, email, handphone, telepon`).
+	q := a.db.Select(`id_ptk, nama_dosen, jenis_kelamin, nik, email, handphone, telepon`).
 		Table("dosen").
 		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16")
 

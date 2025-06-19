@@ -1,10 +1,11 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm/clause"
 	gl "lab.garudacyber.co.id/g-learning-connector"
-	"net/http"
 )
 
 type (
@@ -46,27 +47,26 @@ func (a *ApplicationServer) ListStudents(c *fiber.Ctx) error {
 
 	q := a.db.
 		Select(`
-		mahasiswa_histori.id_pd AS id, 
-		mahasiswa.nama_mahasiswa AS nama_mahasiswa, 
-		mahasiswa.jenis_kelamin AS jenis_kelamin, 
-		mahasiswa.nik AS nik, 
-		mahasiswa.email AS email, 
-		mahasiswa.handphone AS handphone, 
-		mahasiswa.telepon AS telepon`).
-		Table("mahasiswa_histori").
-		Joins("INNER JOIN mahasiswa ON mahasiswa_histori.id_mahasiswa = mahasiswa.id").
-		Where("mahasiswa.nik IS NOT NULL AND mahasiswa.nik != '' AND LENGTH(mahasiswa.nik) = 16 AND mahasiswa_histori.deleted_at IS NULL")
+			id,
+			nama_mahasiswa,
+			jenis_kelamin,
+			nik,
+			email,
+			handphone,
+			telepon`).
+		Table("mahasiswa").
+		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16 AND deleted_at IS NULL")
 
 	if req.Filter.HasKeyword() {
-		q = q.Where("mahasiswa.nama_mahasiswa LIKE ? OR mahasiswa.nik LIKE ?", "%"+req.Filter.Keyword+"%", "%"+req.Filter.Keyword+"%")
+		q = q.Where("nama_mahasiswa LIKE ? OR nik LIKE ?", "%"+req.Filter.Keyword+"%", "%"+req.Filter.Keyword+"%")
 	}
 
 	if req.Filter.HasSort() {
 		sortBy := req.Filter.SortBy
 		if sortBy == "id" {
-			sortBy = "mahasiswa_histori.id_pd"
+			sortBy = "id" // Directly use 'id' as it's from mahasiswa table
 		} else {
-			sortBy = "mahasiswa." + sortBy
+			sortBy = sortBy // Other fields are already from mahasiswa table
 		}
 
 		q = q.Order(
@@ -76,16 +76,16 @@ func (a *ApplicationServer) ListStudents(c *fiber.Ctx) error {
 			},
 		)
 	} else {
-		q = q.Order("mahasiswa_histori.created_at ASC")
+		q = q.Order("created_at ASC")
 	}
 
-	// Menghitung jumlah total data tanpa offset dan limit
+	// Count total data without offset and limit
 	var totalData int64
 	if err := q.Count(&totalData).Error; err != nil {
 		return HandleError(c, err)
 	}
 
-	// Menambahkan limit dan offset setelah menghitung total data
+	// Apply limit and offset after counting total data
 	q = q.Offset(int(offset)).Limit(int(limit))
 
 	if err := q.Scan(&listStudents).Error; err != nil {
@@ -113,9 +113,8 @@ func (a *ApplicationServer) GetTotalStudents(c *fiber.Ctx) error {
 	var total int64
 
 	err := a.db.
-		Table("mahasiswa_histori").
-		Joins("INNER JOIN mahasiswa ON mahasiswa_histori.id_mahasiswa = mahasiswa.id").
-		Where("mahasiswa.nik IS NOT NULL AND mahasiswa.nik != '' AND LENGTH(mahasiswa.nik) = 16 AND mahasiswa_histori.deleted_at IS NULL").
+		Table("mahasiswa").
+		Where("nik IS NOT NULL AND nik != '' AND LENGTH(nik) = 16 AND deleted_at IS NULL").
 		Count(&total).
 		Error
 
