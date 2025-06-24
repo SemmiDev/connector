@@ -247,12 +247,12 @@ func (a *ApplicationServer) Test(c *fiber.Ctx) error {
 }
 
 func (a *ApplicationServer) ListRooms(c *fiber.Ctx) error {
-	var rooms []Ruangan
+	rooms := make([]Ruangan, 0)
 	if err := a.db.Table("ruangan").Find(&rooms).Error; err != nil {
 		return HandleError(c, err)
 	}
 
-	var response []RuanganResponse
+	response := make([]RuanganResponse, 0)
 	for _, r := range rooms {
 		var idsms []string
 		json.Unmarshal([]byte(r.IDSMSRaw), &idsms) // parsing string JSON ke slice
