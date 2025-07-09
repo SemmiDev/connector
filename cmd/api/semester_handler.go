@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type (
@@ -24,8 +25,8 @@ func (a *ApplicationServer) ListSemesters(c *fiber.Ctx) error {
 	err := a.db.
 		Table("semester").
 		Select(`
-			semester.id_smt AS id_smt, 
-			semester.nm_smt AS nm_smt, 
+			semester.id_smt AS id_smt,
+			semester.nm_smt AS nm_smt,
 			CASE WHEN setting.param = 'periode_berlaku' THEN 1 ELSE 0 END AS active
 		`).
 		Joins("LEFT JOIN setting ON semester.id_smt = setting.value AND setting.param = 'periode_berlaku'").
@@ -52,7 +53,7 @@ func (a *ApplicationServer) GetActiveSemester(c *fiber.Ctx) error {
 	err := a.db.
 		Table("semester").
 		Select(`
-			semester.id_smt AS id_smt, 
+			semester.id_smt AS id_smt,
 			semester.nm_smt AS nm_smt
 		`).
 		Joins("LEFT JOIN setting ON semester.id_smt = setting.value AND setting.param = 'periode_berlaku'").
@@ -60,6 +61,46 @@ func (a *ApplicationServer) GetActiveSemester(c *fiber.Ctx) error {
 		Scan(&semester).
 		Error
 
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetActiveSemester]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan data semester yang aktif",
+		Data:    semester,
+	})
+}
+
+func (a *ApplicationServer) ListSemestersSmart(c *fiber.Ctx) error {
+	semesters := make([]ListSemestersResponse, 0)
+
+	err := a.db.
+		Table("semester").
+		Select(`id_smt, nm_smt, a_periode_aktif AS active`).
+		Find(&semesters).Error
+
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListSemestersResponse]]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan semua data semester",
+		Data: ListDataApiResponseWrapper[ListSemestersResponse]{
+			List: semesters,
+		},
+	})
+}
+
+func (a *ApplicationServer) GetActiveSemesterSmart(c *fiber.Ctx) error {
+	var semester GetActiveSemester
+
+	err := a.db.Table("semester").Select(`id_smt, nm_smt`).Where("a_periode_aktif = 1").Scan(&semester).Error
 	if err != nil {
 		return HandleError(c, err)
 	}

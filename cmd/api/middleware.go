@@ -37,8 +37,26 @@ func (a *ApplicationServer) WithApiKey() fiber.Handler {
 
 		apiKey := fields[1]
 
+		// Pilih tabel berdasarkan URL
+		var tableName string
+		url := ctx.OriginalURL()
+
+		if strings.Contains(url, "smart") {
+			tableName = "setting_app"
+		} else if strings.Contains(url, "misca") {
+			tableName = "setting_pt"
+		} else {
+			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+				"code":    http.StatusBadRequest,
+				"status":  "Bad Request",
+				"success": false,
+				"message": "Unknown app source in URL",
+			})
+		}
+
+		// Query secret dari tabel yang dipilih
 		var secret string
-		err := a.db.Table("setting_pt").Where("param = ?", "secret_smartthink").Select("value").Scan(&secret).Error
+		err := a.db.Table(tableName).Where("param = ?", "secret_smartthink").Select("value").Scan(&secret).Error
 		if err != nil {
 			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 				"code":    http.StatusInternalServerError,
