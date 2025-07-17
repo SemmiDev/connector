@@ -582,13 +582,13 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 			GROUP_CONCAT(
 				CONCAT(
 					CASE jadwal.hari
+						WHEN '0' THEN 'Minggu'
 						WHEN '1' THEN 'Senin'
 						WHEN '2' THEN 'Selasa'
 						WHEN '3' THEN 'Rabu'
 						WHEN '4' THEN 'Kamis'
 						WHEN '5' THEN 'Jumat'
 						WHEN '6' THEN 'Sabtu'
-						WHEN '7' THEN 'Minggu'
 						ELSE 'Unknown'
 					END,
 					'-', jadwal.jam_mulai,
@@ -669,6 +669,291 @@ func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
 		Data: ListDataApiResponseWrapper[ListKelasResponse]{
 			List:     listKelas,
 			PageInfo: pageInfo,
+		},
+	})
+}
+
+func (a *ApplicationServer) TotalKelasSmart(c *fiber.Ctx) error {
+	var IDSemesterAktif string
+	err := a.db.Table("semester").Select(`id_smt`).Where("a_periode_aktif = 1").Scan(&IDSemesterAktif).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	semester := c.Query("semester", IDSemesterAktif)
+	var total int64
+
+	err = a.db.Table("kelas_kuliah").Where("kelas_kuliah.id_smt = ?", semester).Count(&total).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalKelasResponse]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan total kelas",
+		Data: GetTotalKelasResponse{
+			Total: total,
+		},
+	})
+}
+
+// ListKelas handles the listing of classes with multiple lecturers
+func (a *ApplicationServer) ListKelasSmart(c *fiber.Ctx) error {
+	req := NewListKelasRequest()
+	if err := c.QueryParser(req); err != nil {
+		return HandleError(c, err)
+	}
+
+	var activeSemester string
+	err := a.db.Table("semester").Select(`id_smt`).Where("a_periode_aktif = 1").Scan(&activeSemester).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	// Set default semester
+	if req.Semester == "" {
+		req.Semester = activeSemester
+	}
+
+	// Model to hold query results
+	listKelas := make([]ListKelasResponse, 0)
+
+	offset := req.Filter.GetOffset()
+	limit := req.Filter.GetLimit()
+
+	// Query utama
+	q := a.db.
+		Table("kelas_kuliah").
+		Select(`
+			kelas_kuliah.id_kls AS id_kelas,
+			kelas_kuliah.id_sms AS id_sms,
+			CONCAT_WS(' ', kelas_kuliah.nm_kls, kelas_kuliah.pilihan_kelas) AS nama_kelas,
+			matkul.nm_mk AS nama_matakuliah,
+			matkul.kode_mk AS kode_matakuliah,
+			GROUP_CONCAT(
+				DISTINCT CAST(akt_ajar_dosen.id_reg_ptk AS CHAR)
+				ORDER BY akt_ajar_dosen.id_reg_ptk ASC
+				SEPARATOR '|'
+			) AS id_dosen_pengajar,
+			kelas_kuliah.id_smt AS semester,
+			GROUP_CONCAT(
+				CONCAT(
+					CASE jadwal.hari
+						WHEN '0' THEN 'Minggu'
+						WHEN '1' THEN 'Senin'
+						WHEN '2' THEN 'Selasa'
+						WHEN '3' THEN 'Rabu'
+						WHEN '4' THEN 'Kamis'
+						WHEN '5' THEN 'Jumat'
+						WHEN '6' THEN 'Sabtu'
+						ELSE 'Unknown'
+					END,
+					'-', jadwal.jam_mulai,
+					'-', jadwal.jam_selesai
+				)
+				ORDER BY jadwal.hari, jadwal.jam_mulai ASC
+				SEPARATOR '|'
+			) AS jadwal,
+			GROUP_CONCAT(
+				ruangan.kode_ruangan
+				ORDER BY ruangan.kode_ruangan ASC
+				SEPARATOR '|'
+			) AS nama_ruangan,
+			GROUP_CONCAT(
+				akt_ajar_dosen.jml_tm_renc
+				ORDER BY akt_ajar_dosen.jml_tm_renc ASC
+				SEPARATOR '|'
+			) AS total_pertemuan
+		`).
+		Joins("JOIN matkul ON matkul.id_mk = kelas_kuliah.id_mk").
+		Joins("LEFT JOIN akt_ajar_dosen ON akt_ajar_dosen.id_kls = kelas_kuliah.id_kls").
+		Joins("LEFT JOIN jadwal ON jadwal.id_kls = kelas_kuliah.id_kls").
+		Joins("LEFT JOIN ruangan ON ruangan.id_ruangan = jadwal.id_ruangan").
+		Where("kelas_kuliah.id_smt = ?", req.Semester).
+		Debug().
+		Group("kelas_kuliah.id_kls")
+
+	// Add keyword search
+	if req.Filter.HasKeyword() {
+		q = q.Where("kelas_kuliah.nm_kls LIKE ?", "%"+req.Filter.Keyword+"%")
+	}
+
+	// Add sorting
+	if req.Filter.HasSort() {
+		q = q.Order(clause.OrderByColumn{
+			Column: clause.Column{Name: req.Filter.SortBy},
+			Desc:   req.Filter.IsDesc(),
+		})
+	} else {
+		q = q.Order("kelas_kuliah.id_kls ASC")
+	}
+
+	// Count total data
+	var totalData int64
+	if err := q.Count(&totalData).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Add limit and offset
+	q = q.Offset(int(offset)).Limit(int(limit))
+
+	// Execute query
+	if err := q.Scan(&listKelas).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Post-process id_dosen_pengajar to convert pipe-separated string to slice
+	for i := range listKelas {
+		if listKelas[i].IDDosenPengajarStr != "" {
+			listKelas[i].IDDosenPengajar = strings.Split(listKelas[i].IDDosenPengajarStr, "|")
+		} else {
+			listKelas[i].IDDosenPengajar = []string{}
+		}
+	}
+
+	// Create pagination info
+	pageInfo, err := gl.NewPageInfo(req.Filter.CurrentPage, limit, offset, totalData)
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	// Return result as JSON
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListKelasResponse]]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan data kelas",
+		Data: ListDataApiResponseWrapper[ListKelasResponse]{
+			List:     listKelas,
+			PageInfo: pageInfo,
+		},
+	})
+}
+
+// smart
+func (a *ApplicationServer) ListSimpleStudentKelasSmart(c *fiber.Ctx) error {
+	req := NewListKelasRequest()
+	if err := c.QueryParser(req); err != nil {
+		return HandleError(c, err)
+	}
+
+	var activeSemester string
+	err := a.db.Table("semester").Select(`id_smt`).Where("a_periode_aktif = 1").Scan(&activeSemester).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	// Set default semester
+	if req.Semester == "" {
+		req.Semester = activeSemester
+	}
+
+	// Model untuk menampung hasil query
+	listKelas := make([]ListSimpleStudentKelas, 0)
+
+	offset := req.Filter.GetOffset()
+	limit := req.Filter.GetLimit()
+
+	// Query hanya mengambil kolom yang diperlukan
+	q := a.db.Table("nilai").
+		Select(`
+			nilai.id_reg_pd AS id_pd,
+			nilai.id_reg_pd AS id_mahasiswa,
+			mahasiswa.nik AS nik,
+			GROUP_CONCAT(kelas_kuliah.id_kls ORDER BY kelas_kuliah.id_kls SEPARATOR '|') AS id_kelas,
+			kelas_kuliah.id_smt AS semester
+		`).
+		Joins("JOIN mahasiswa ON mahasiswa.id_pd = nilai.id_reg_pd").
+		Joins("JOIN kelas_kuliah ON kelas_kuliah.id_kls = nilai.id_kls").
+		Where("kelas_kuliah.id_smt = ?", req.Semester).
+		Group("nilai.id_reg_pd, mahasiswa.nik, kelas_kuliah.id_smt")
+
+	// Filter berdasarkan keyword
+	if req.Filter.HasKeyword() {
+		q = q.Where("mahasiswa.nik LIKE ?", "%"+req.Filter.Keyword+"%")
+	}
+
+	// Sorting default atau sesuai request
+	if req.Filter.HasSort() {
+		q = q.Order(clause.OrderByColumn{
+			Column: clause.Column{Name: req.Filter.SortBy},
+			Desc:   req.Filter.IsDesc(),
+		})
+	} else {
+		q = q.Order("nilai.id_reg_pd ASC")
+	}
+
+	// Menghitung jumlah total data
+	var totalData int64
+	if err := q.Count(&totalData).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Menambahkan limit dan offset
+	q = q.Offset(int(offset)).Limit(int(limit))
+
+	// Eksekusi query
+	if err := q.Scan(&listKelas).Error; err != nil {
+		return HandleError(c, err)
+	}
+
+	// Membuat informasi paginasi
+	pageInfo, err := gl.NewPageInfo(req.Filter.CurrentPage, limit, offset, totalData)
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	// Mengembalikan hasil sebagai JSON
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListSimpleStudentKelas]]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan data kelas sederhana",
+		Data: ListDataApiResponseWrapper[ListSimpleStudentKelas]{
+			List:     listKelas,
+			PageInfo: pageInfo,
+		},
+	})
+}
+
+func (a *ApplicationServer) TotalListSimpleStudentKelasSmart(c *fiber.Ctx) error {
+	var activeSemester string
+	err := a.db.Table("semester").Select(`id_smt`).Where("a_periode_aktif = 1").Scan(&activeSemester).Error
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	semester := c.Query("semester", activeSemester)
+
+	var total int64
+
+	err = a.db.Table("nilai").
+		Select(`
+			nilai.id_reg_pd AS id_pd,
+			nilai.id_reg_pd AS id_mahasiswa,
+			mahasiswa.nik AS nik,
+			GROUP_CONCAT(kelas_kuliah.id_kls ORDER BY kelas_kuliah.id_kls SEPARATOR '|') AS id_kelas,
+			kelas_kuliah.id_smt AS semester
+		`).
+		Joins("JOIN mahasiswa ON mahasiswa.id_pd = nilai.id_reg_pd").
+		Joins("JOIN kelas_kuliah ON kelas_kuliah.id_kls = nilai.id_kls").
+		Where("kelas_kuliah.id_smt = ?", semester).
+		Group("nilai.id_reg_pd, mahasiswa.nik, kelas_kuliah.id_smt").
+		Count(&total).Error
+
+	if err != nil {
+		return HandleError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalKelasResponse]{
+		Code:    fiber.StatusOK,
+		Status:  http.StatusText(fiber.StatusOK),
+		Success: true,
+		Message: "Sukses mendapatkan total kelas sederhana",
+		Data: GetTotalKelasResponse{
+			Total: total,
 		},
 	})
 }

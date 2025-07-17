@@ -41,8 +41,11 @@ func (a *ApplicationServer) WithApiKey() fiber.Handler {
 		var tableName string
 		url := ctx.OriginalURL()
 
+		instansi := "MISCA"
+
 		if strings.Contains(url, "smart") {
 			tableName = "setting_app"
+			instansi = "SMART"
 		} else if strings.Contains(url, "misca") {
 			tableName = "setting_pt"
 		} else {
@@ -74,6 +77,9 @@ func (a *ApplicationServer) WithApiKey() fiber.Handler {
 				"message": "Api key tidak sesuai",
 			})
 		}
+
+		// save to context
+		ctx.Locals("tipe_instansi", instansi)
 
 		return ctx.Next()
 	}
