@@ -190,7 +190,11 @@ type ListSimpleStudentKelas struct {
 	Semester    string `json:"semester"`
 }
 
-func (a *ApplicationServer) ListSimpleStudentKelas(c *fiber.Ctx) error {
+func (a *ApplicationServer) ListSimpleStudentKelasMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.ListSimpleStudentKelasSmart(c)
+	}
+
 	req := NewListKelasRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
@@ -282,7 +286,11 @@ func (a *ApplicationServer) ListSimpleStudentKelas(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) TotalListSimpleStudentKelas(c *fiber.Ctx) error {
+func (a *ApplicationServer) TotalListSimpleStudentKelasMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.TotalListSimpleStudentKelasSmart(c)
+	}
+
 	var activeSemester string
 
 	// Ambil semester aktif
@@ -322,7 +330,7 @@ func (a *ApplicationServer) TotalListSimpleStudentKelas(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
+func (a *ApplicationServer) ListStudentKelasDetailsMisca(c *fiber.Ctx) error {
 	req := NewListKelasRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
@@ -444,7 +452,7 @@ func (a *ApplicationServer) ListStudentKelasDetails(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) GetTotalKelasDetails(c *fiber.Ctx) error {
+func (a *ApplicationServer) GetTotalKelasDetailsMisca(c *fiber.Ctx) error {
 	var activeSemester string
 
 	if err := a.db.
@@ -503,7 +511,11 @@ type ListKelasResponse struct {
 	TotalPertemuan     string   `json:"total_pertemuan" gorm:"column:total_pertemuan"`
 }
 
-func (a *ApplicationServer) TotalKelas(c *fiber.Ctx) error {
+func (a *ApplicationServer) TotalKelasMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.TotalKelasSmart(c)
+	}
+
 	var activeSemester string
 
 	if err := a.db.
@@ -537,7 +549,11 @@ func (a *ApplicationServer) TotalKelas(c *fiber.Ctx) error {
 }
 
 // ListKelas handles the listing of classes with multiple lecturers
-func (a *ApplicationServer) ListKelas(c *fiber.Ctx) error {
+func (a *ApplicationServer) ListKelasMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.ListKelasSmart(c)
+	}
+
 	req := NewListKelasRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
@@ -729,7 +745,12 @@ func (a *ApplicationServer) ListKelasSmart(c *fiber.Ctx) error {
 		Select(`
 			kelas_kuliah.id_kls AS id_kelas,
 			kelas_kuliah.id_sms AS id_sms,
-			CONCAT_WS(' ', kelas_kuliah.nm_kls, kelas_kuliah.pilihan_kelas) AS nama_kelas,
+			CONCAT_WS(
+			' ',
+			program.nm_program,
+			kelas_kuliah.nm_kls,
+			CONCAT('(Pilihan ', kelas_kuliah.pilihan_kelas, ')')
+			) AS nama_kelas,
 			matkul.nm_mk AS nama_matakuliah,
 			matkul.kode_mk AS kode_matakuliah,
 			GROUP_CONCAT(
@@ -768,6 +789,7 @@ func (a *ApplicationServer) ListKelasSmart(c *fiber.Ctx) error {
 			) AS total_pertemuan
 		`).
 		Joins("JOIN matkul ON matkul.id_mk = kelas_kuliah.id_mk").
+		Joins("JOIN program ON program.id_program = kelas_kuliah.id_program").
 		Joins("LEFT JOIN akt_ajar_dosen ON akt_ajar_dosen.id_kls = kelas_kuliah.id_kls").
 		Joins("LEFT JOIN jadwal ON jadwal.id_kls = kelas_kuliah.id_kls").
 		Joins("LEFT JOIN ruangan ON ruangan.id_ruangan = jadwal.id_ruangan").

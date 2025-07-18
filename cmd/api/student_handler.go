@@ -34,7 +34,11 @@ func NewListStudentsRequest() *ListStudentsRequest {
 	}
 }
 
-func (a *ApplicationServer) ListStudents(c *fiber.Ctx) error {
+func (a *ApplicationServer) ListStudentsMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.ListStudentsSmart(c)
+	}
+
 	req := NewListStudentsRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
@@ -109,7 +113,11 @@ func (a *ApplicationServer) ListStudents(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) GetTotalStudents(c *fiber.Ctx) error {
+func (a *ApplicationServer) GetTotalStudentsMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.GetTotalStudentsSmart(c)
+	}
+
 	var total int64
 
 	err := a.db.

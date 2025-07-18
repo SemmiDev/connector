@@ -5,12 +5,18 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
 // example -> Authorization: Bearer jwtTokenXXX
 const (
 	authorizationHeaderKey = "Authorization"
 	applicationSource      = "glearning"
+
+	instansiTypeKey   = "tipe_instansi"
+	instansiTypeMisca = "MISCA"
+	instansiTypeSmart = "SMART"
 )
 
 func (a *ApplicationServer) WithApiKey() fiber.Handler {
@@ -37,35 +43,40 @@ func (a *ApplicationServer) WithApiKey() fiber.Handler {
 
 		apiKey := fields[1]
 
-		// Pilih tabel berdasarkan URL
-		var tableName string
-		url := ctx.OriginalURL()
+		var secret string
+		var instansi string
 
-		instansi := "MISCA"
+		// Coba dulu ke setting_pt
+		err := a.db.Table("setting_pt").
+			Where("param = ?", "secret_smartthink").
+			Select("value").
+			Scan(&secret).Error
 
-		if strings.Contains(url, "smart") {
-			tableName = "setting_app"
-			instansi = "SMART"
-		} else if strings.Contains(url, "misca") {
-			tableName = "setting_pt"
+		if err == nil && secret != "" {
+			instansi = instansiTypeMisca
 		} else {
-			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
-				"code":    http.StatusBadRequest,
-				"status":  "Bad Request",
-				"success": false,
-				"message": "Unknown app source in URL",
-			})
+			// Kalau tidak ada, fallback ke setting_app
+			err = a.db.Table("setting_app").
+				Where("param = ?", "secret_smartthink").
+				Select("value").
+				Scan(&secret).Error
+			if err != nil {
+				return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+					"code":    http.StatusInternalServerError,
+					"status":  "Internal Server Error",
+					"success": false,
+					"message": err.Error(),
+				})
+			}
+			instansi = instansiTypeSmart
 		}
 
-		// Query secret dari tabel yang dipilih
-		var secret string
-		err := a.db.Table(tableName).Where("param = ?", "secret_smartthink").Select("value").Scan(&secret).Error
-		if err != nil {
-			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"code":    http.StatusInternalServerError,
-				"status":  "Internal Server Error",
+		if secret == "" {
+			return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
+				"code":    http.StatusUnauthorized,
+				"status":  "Unauthorized",
 				"success": false,
-				"message": err.Error(),
+				"message": "Secret tidak ditemukan",
 			})
 		}
 
@@ -78,9 +89,17 @@ func (a *ApplicationServer) WithApiKey() fiber.Handler {
 			})
 		}
 
-		// save to context
-		ctx.Locals("tipe_instansi", instansi)
-
+		ctx.Locals(instansiTypeKey, instansi)
 		return ctx.Next()
 	}
+}
+
+func (a *ApplicationServer) SetupCommonMiddlewares() {
+	a.router.Use(cors.New())
+	a.router.Use(recover.New())
+}
+
+func IsSmartInstansi(c *fiber.Ctx) bool {
+	tipe := c.Locals(instansiTypeKey)
+	return tipe == instansiTypeSmart
 }

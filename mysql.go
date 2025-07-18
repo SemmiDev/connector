@@ -2,6 +2,7 @@ package g_learning_connector
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -16,9 +17,7 @@ func NewMySQLDatabase(config *Config) (*gorm.DB, error) {
 		config.DBDatabase,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		//Logger: logger.Default.LogMode(logger.Silent),
-	})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect database")

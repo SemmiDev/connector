@@ -19,7 +19,11 @@ type (
 	}
 )
 
-func (a *ApplicationServer) ListSemesters(c *fiber.Ctx) error {
+func (a *ApplicationServer) ListSemestersMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.ListSemestersSmart(c)
+	}
+
 	semesters := make([]ListSemestersResponse, 0)
 
 	err := a.db.
@@ -47,7 +51,11 @@ func (a *ApplicationServer) ListSemesters(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) GetActiveSemester(c *fiber.Ctx) error {
+func (a *ApplicationServer) GetActiveSemesterMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.GetActiveSemesterSmart(c)
+	}
+
 	var semester GetActiveSemester
 
 	err := a.db.

@@ -34,7 +34,11 @@ func NewListLecturerRequest() *ListLecturerRequest {
 	}
 }
 
-func (a *ApplicationServer) ListLecturer(c *fiber.Ctx) error {
+func (a *ApplicationServer) ListLecturerMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.ListLecturerSmart(c)
+	}
+
 	req := NewListLecturerRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
@@ -94,7 +98,11 @@ func (a *ApplicationServer) ListLecturer(c *fiber.Ctx) error {
 	})
 }
 
-func (a *ApplicationServer) GetTotalLecturer(c *fiber.Ctx) error {
+func (a *ApplicationServer) GetTotalLecturerMisca(c *fiber.Ctx) error {
+	if IsSmartInstansi(c) {
+		return a.GetTotalLecturerSmart(c)
+	}
+
 	var total int64
 
 	err := a.db.Table("dosen").Count(&total).

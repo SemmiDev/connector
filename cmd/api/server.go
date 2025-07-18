@@ -3,14 +3,11 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"net/http"
+	"net"
 	"time"
 
-	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
-	fiberRecovery "github.com/gofiber/fiber/v2/middleware/recover"
 	"gorm.io/gorm"
 	gl "lab.garudacyber.co.id/g-learning-connector"
 )
@@ -33,80 +30,48 @@ func NewApplicationServer(db *gorm.DB, logger *slog.Logger, config *gl.Config, r
 	return &app
 }
 
-func (a *ApplicationServer) SetupCommonMiddlewares() {
-	a.router.Use(cors.New())
-	a.router.Use(fiberRecovery.New())
-}
-
 func (a *ApplicationServer) SetupHealthCheckRoutes() {
 	a.router.Use(healthcheck.New(healthcheck.Config{
 		LivenessProbe: func(c *fiber.Ctx) bool {
 			return true
 		},
-		LivenessEndpoint: "/live",
+		LivenessEndpoint: "/api/live",
 		ReadinessProbe: func(c *fiber.Ctx) bool {
 			return true
 		},
-		ReadinessEndpoint: "/ready",
+		ReadinessEndpoint: "/api/ready",
 	}))
 }
 
 func (a *ApplicationServer) SetupRoutes() {
-	// MISCA
-	a.router.Get("/api/misca/semesters", a.WithApiKey(), a.ListSemesters)
-	a.router.Get("/api/misca/semesters/active", a.WithApiKey(), a.GetActiveSemester)
+	a.router.Get("/api/misca/semesters", a.WithApiKey(), a.ListSemestersMisca)
+	a.router.Get("/api/misca/semesters/active", a.WithApiKey(), a.GetActiveSemesterMisca)
 
-	a.router.Get("/api/misca/students", a.WithApiKey(), a.ListStudents)
-	a.router.Get("/api/misca/students/total", a.WithApiKey(), a.GetTotalStudents)
+	a.router.Get("/api/misca/students", a.WithApiKey(), a.ListStudentsMisca)
+	a.router.Get("/api/misca/students/total", a.WithApiKey(), a.GetTotalStudentsMisca)
 
-	a.router.Get("/api/misca/lecturers", a.WithApiKey(), a.ListLecturer)
-	a.router.Get("/api/misca/lecturers/total", a.WithApiKey(), a.GetTotalLecturer)
+	a.router.Get("/api/misca/lecturers", a.WithApiKey(), a.ListLecturerMisca)
+	a.router.Get("/api/misca/lecturers/total", a.WithApiKey(), a.GetTotalLecturerMisca)
 
-	a.router.Get("/api/misca/classes", a.WithApiKey(), a.ListKelas)
-	a.router.Get("/api/misca/classes/total", a.WithApiKey(), a.TotalKelas)
+	a.router.Get("/api/misca/classes", a.WithApiKey(), a.ListKelasMisca)
+	a.router.Get("/api/misca/classes/total", a.WithApiKey(), a.TotalKelasMisca)
 
-	a.router.Get("/api/misca/student_classes", a.WithApiKey(), a.ListSimpleStudentKelas)
-	a.router.Get("/api/misca/student_classes/total", a.WithApiKey(), a.TotalListSimpleStudentKelas)
+	a.router.Get("/api/misca/student_classes", a.WithApiKey(), a.ListSimpleStudentKelasMisca)
+	a.router.Get("/api/misca/student_classes/total", a.WithApiKey(), a.TotalListSimpleStudentKelasMisca)
 
-	a.router.Get("/api/misca/student_classes_details", a.WithApiKey(), a.ListStudentKelasDetails)
-	a.router.Get("/api/misca/student_classes_details/total", a.WithApiKey(), a.GetTotalKelasDetails)
+	a.router.Get("/api/misca/student_classes_details", a.WithApiKey(), a.ListStudentKelasDetailsMisca)
+	a.router.Get("/api/misca/student_classes_details/total", a.WithApiKey(), a.GetTotalKelasDetailsMisca)
 
-	a.router.Get("/api/misca/rooms", a.WithApiKey(), a.ListRooms)
-	a.router.Get("/api/misca/rooms/total", a.WithApiKey(), a.GetTotalRooms)
+	a.router.Get("/api/misca/rooms", a.WithApiKey(), a.ListRoomsMisca)
+	a.router.Get("/api/misca/rooms/total", a.WithApiKey(), a.GetTotalRoomsMisca)
 
-	a.router.Get("/api/misca/sms", a.WithApiKey(), a.ListSMS)
-	a.router.Get("/api/misca/sms/total", a.WithApiKey(), a.GetTotalSMS)
-
-	// SMART
-	a.router.Get("/api/smart/semesters", a.WithApiKey(), a.ListSemestersSmart)
-	a.router.Get("/api/smart/semesters/active", a.WithApiKey(), a.GetActiveSemesterSmart)
-
-	a.router.Get("/api/smart/students", a.WithApiKey(), a.ListStudentsSmart)
-	a.router.Get("/api/smart/students/total", a.WithApiKey(), a.GetTotalStudentsSmart)
-
-	a.router.Get("/api/smart/lecturers", a.WithApiKey(), a.ListLecturerSmart)
-	a.router.Get("/api/smart/lecturers/total", a.WithApiKey(), a.GetTotalLecturerSmart)
-
-	a.router.Get("/api/smart/classes", a.WithApiKey(), a.ListKelasSmart)
-	a.router.Get("/api/smart/classes/total", a.WithApiKey(), a.TotalKelasSmart)
-
-	a.router.Get("/api/smart/student_classes", a.WithApiKey(), a.ListSimpleStudentKelasSmart)
-	a.router.Get("/api/smart/student_classes/total", a.WithApiKey(), a.TotalListSimpleStudentKelasSmart)
-
-	a.router.Get("/api/smart/rooms", a.WithApiKey(), a.ListRoomsSmart)
-	a.router.Get("/api/smart/rooms/total", a.WithApiKey(), a.GetTotalRoomsSmart)
-
-	a.router.Get("/api/smart/sms", a.WithApiKey(), a.ListSMSSmart)
-	a.router.Get("/api/smart/sms/total", a.WithApiKey(), a.GetTotalSMSSmart)
+	a.router.Get("/api/misca/sms", a.WithApiKey(), a.ListSMSMisca)
+	a.router.Get("/api/misca/sms/total", a.WithApiKey(), a.GetTotalSMSMisca)
 }
 
 func (a *ApplicationServer) Run() {
-	host := "0.0.0.0"
-	port := a.config.AppPort
-	hostPort := fmt.Sprintf("%s:%s", host, port)
-
-	a.logger.With(slog.String("host", host), slog.String("port", port)).Info("Server started")
-
+	hostPort := net.JoinHostPort("127.0.0.1", a.config.AppPort)
+	a.logger.With(slog.String("ON", hostPort)).Info("SERVER STARTED")
 	err := a.router.Listen(hostPort)
 	gl.PanicIfNeeded(err)
 }
@@ -183,203 +148,4 @@ func GetUnsurNilai(db *gorm.DB, idSMS, idSMT, tipeKuliah, tipePenilaian string) 
 
 	result := query.First(&unsur)
 	return &unsur, result.Error
-}
-
-func (a *ApplicationServer) ListRooms(c *fiber.Ctx) error {
-	rooms := make([]Ruangan, 0)
-	if err := a.db.Table("ruangan").Find(&rooms).Error; err != nil {
-		return HandleError(c, err)
-	}
-
-	response := make([]RuanganResponse, 0)
-	for _, r := range rooms {
-		var idsms []string
-		json.Unmarshal([]byte(r.IDSMSRaw), &idsms) // parsing string JSON ke slice
-
-		response = append(response, RuanganResponse{
-			IDRuangan:      r.IDRuangan,
-			IDSMS:          idsms,
-			NamaRuangan:    r.NamaRuangan,
-			IDJenisRuangan: r.IDJenisRuangan,
-			KodeRuangan:    r.KodeRuangan,
-			Keterangan:     r.Keterangan,
-			Kapasitas:      r.Kapasitas,
-			CreatedAt:      r.CreatedAt,
-			UpdatedAt:      r.UpdatedAt,
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[RuanganResponse]]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan data ruangan",
-		Data: ListDataApiResponseWrapper[RuanganResponse]{
-			List: response,
-		},
-	})
-}
-
-func (a *ApplicationServer) GetTotalRooms(c *fiber.Ctx) error {
-	var total int64
-	err := a.db.Table("ruangan").Count(&total).Error
-	if err != nil {
-		return HandleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalStudentsResponse]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan total mahasiswa",
-		Data: GetTotalStudentsResponse{
-			Total: total,
-		},
-	})
-}
-
-func (a *ApplicationServer) ListRoomsSmart(c *fiber.Ctx) error {
-	rooms := make([]Ruangan, 0)
-	if err := a.db.
-		Select("id_ruangan AS id_ruangan, id_sms AS id_sms, kode_ruangan AS kode_ruangan, kode_ruangan AS nama_ruangan, ket AS keterangan").
-		Table("ruangan").Find(&rooms).Error; err != nil {
-		return HandleError(c, err)
-	}
-
-	response := make([]RuanganResponse, 0)
-	for _, r := range rooms {
-		// cek jika r.IDSMSRaw ini tidak array -> ["86205","86206","87203","88201"]
-		// maka jangan di unmarshal, masukkan langsung value r.IDSMSRaw ke slice idsms
-		var idsms []string
-		err := json.Unmarshal([]byte(r.IDSMSRaw), &idsms)
-		if err != nil {
-			// Jika gagal unmarshal DAN string-nya tidak kosong,
-			// anggap sebagai ID tunggal dan masukkan ke slice.
-			if r.IDSMSRaw != "" {
-				idsms = []string{r.IDSMSRaw}
-			}
-			// Jika string kosong, idsms akan tetap menjadi slice kosong, yang sudah benar.
-		}
-
-		response = append(response, RuanganResponse{
-			IDRuangan:      r.IDRuangan,
-			IDSMS:          idsms,
-			NamaRuangan:    r.NamaRuangan,
-			IDJenisRuangan: r.IDJenisRuangan,
-			KodeRuangan:    r.KodeRuangan,
-			Keterangan:     r.Keterangan,
-			Kapasitas:      r.Kapasitas,
-			CreatedAt:      r.CreatedAt,
-			UpdatedAt:      r.UpdatedAt,
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[RuanganResponse]]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan data ruangan",
-		Data: ListDataApiResponseWrapper[RuanganResponse]{
-			List: response,
-		},
-	})
-}
-
-func (a *ApplicationServer) GetTotalRoomsSmart(c *fiber.Ctx) error {
-	var total int64
-	err := a.db.Table("ruangan").Count(&total).Error
-	if err != nil {
-		return HandleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalStudentsResponse]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan total ruangan",
-		Data: GetTotalStudentsResponse{
-			Total: total,
-		},
-	})
-}
-
-func (a *ApplicationServer) ListSMS(c *fiber.Ctx) error {
-	var sms []SMS
-	if err := a.db.Table("sms").
-		Select("sms.*,jenjang_pendidikan.nama_jenjang_didik AS nama_jenjang_didik").
-		Joins("LEFT JOIN jenjang_pendidikan ON sms.id_jenj_didik = jenjang_pendidikan.id_jenjang_didik").
-		Scan(&sms).Error; err != nil {
-		return HandleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[SMS]]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan data ruangan",
-		Data: ListDataApiResponseWrapper[SMS]{
-			List: sms,
-		},
-	})
-}
-
-func (a *ApplicationServer) GetTotalSMS(c *fiber.Ctx) error {
-	var total int64
-	err := a.db.Table("sms").Count(&total).Error
-	if err != nil {
-		return HandleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalStudentsResponse]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan total sms",
-		Data: GetTotalStudentsResponse{
-			Total: total,
-		},
-	})
-}
-
-func (a *ApplicationServer) ListSMSSmart(c *fiber.Ctx) error {
-	var sms []SMS
-	if err := a.db.Table("sms").
-		Select(`
-				sms.id_sms AS id_sms,
-				sms.nm_lemb AS nm_lemb,
-				sms.nm_lemb_english AS nm_lemb_inggris,
-				sms.kode_prodi AS kode_sms,
-				jenjang_pendidikan.nm_jenj_didik AS nama_jenjang_didik`).
-		Joins("LEFT JOIN jenjang_pendidikan ON sms.id_jenj_didik = jenjang_pendidikan.id_jenj_didik").
-		Scan(&sms).Error; err != nil {
-		return HandleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[SMS]]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan data ruangan",
-		Data: ListDataApiResponseWrapper[SMS]{
-			List: sms,
-		},
-	})
-}
-
-func (a *ApplicationServer) GetTotalSMSSmart(c *fiber.Ctx) error {
-	var total int64
-	err := a.db.Table("sms").Count(&total).Error
-	if err != nil {
-		return HandleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(ApiResponse[GetTotalStudentsResponse]{
-		Code:    fiber.StatusOK,
-		Status:  http.StatusText(fiber.StatusOK),
-		Success: true,
-		Message: "Sukses mendapatkan total sms",
-		Data: GetTotalStudentsResponse{
-			Total: total,
-		},
-	})
 }
