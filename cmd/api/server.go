@@ -70,7 +70,7 @@ func (a *ApplicationServer) SetupRoutes() {
 }
 
 func (a *ApplicationServer) Run() {
-	hostPort := net.JoinHostPort("127.0.0.1", a.config.AppPort)
+	hostPort := net.JoinHostPort("0.0.0.0", a.config.AppPort)
 	a.logger.With(slog.String("ON", hostPort)).Info("SERVER STARTED")
 	err := a.router.Listen(hostPort)
 	gl.PanicIfNeeded(err)
