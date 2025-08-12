@@ -11,7 +11,7 @@ func (a *ApplicationServer) ListSMSMisca(c *fiber.Ctx) error {
 		return a.ListSMSSmart(c)
 	}
 
-	var sms []SMS
+	sms := make([]SMS, 0)
 	if err := a.db.Table("sms").
 		Select("sms.*,jenjang_pendidikan.nama_jenjang_didik AS nama_jenjang_didik").
 		Joins("LEFT JOIN jenjang_pendidikan ON sms.id_jenj_didik = jenjang_pendidikan.id_jenjang_didik").
@@ -60,6 +60,7 @@ func (a *ApplicationServer) ListSMSSmart(c *fiber.Ctx) error {
 				sms.nm_lemb AS nm_lemb,
 				sms.nm_lemb_english AS nm_lemb_inggris,
 				sms.kode_prodi AS kode_sms,
+				sms.id_jns_sms,
 				jenjang_pendidikan.nm_jenj_didik AS nama_jenjang_didik`).
 		Joins("LEFT JOIN jenjang_pendidikan ON sms.id_jenj_didik = jenjang_pendidikan.id_jenj_didik").
 		Scan(&sms).Error; err != nil {
