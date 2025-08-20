@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -498,17 +499,39 @@ func (a *ApplicationServer) GetTotalKelasDetailsMisca(c *fiber.Ctx) error {
 
 // ListKelasResponse defines the structure for class list response
 type ListKelasResponse struct {
-	IDKelas            string   `json:"id_kelas" gorm:"column:id_kelas"`
-	IDSMS              string   `json:"id_sms" gorm:"column:id_sms"`
-	NamaKelas          string   `json:"nama_kelas" gorm:"column:nama_kelas"`
-	NamaMataKuliah     string   `json:"nama_matakuliah" gorm:"column:nama_matakuliah"`
-	KodeMataKuliah     string   `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
-	IDDosenPengajar    []string `json:"id_dosen_pengajar"`
-	IDDosenPengajarStr string   `gorm:"column:id_dosen_pengajar"`
-	Semester           string   `json:"semester" gorm:"column:semester"`
-	Jadwal             string   `json:"jadwal" gorm:"column:jadwal"`
-	NamaRuangan        string   `json:"nama_ruangan" gorm:"column:nama_ruangan"`
-	TotalPertemuan     string   `json:"total_pertemuan" gorm:"column:total_pertemuan"`
+	IDKelas            string              `json:"id_kelas" gorm:"column:id_kelas"`
+	IDSMS              string              `json:"id_sms" gorm:"column:id_sms"`
+	NamaKelas          string              `json:"nama_kelas" gorm:"column:nama_kelas"`
+	NamaMataKuliah     string              `json:"nama_matakuliah" gorm:"column:nama_matakuliah"`
+	KodeMataKuliah     string              `json:"kode_matakuliah" gorm:"column:kode_matakuliah"`
+	IDDosenPengajar    []string            `json:"id_dosen_pengajar"`
+	IDDosenPengajarStr string              `gorm:"column:id_dosen_pengajar"`
+	Semester           string              `json:"semester" gorm:"column:semester"`
+	Jadwal             string              `json:"jadwal" gorm:"column:jadwal"`
+	NamaRuangan        string              `json:"nama_ruangan" gorm:"column:nama_ruangan"`
+	TotalPertemuan     string              `json:"total_pertemuan" gorm:"column:total_pertemuan"`
+	JadwalPerkuliahan  []JadwalPerkuliahan `json:"jadwal_perkuliahan" gorm:"-"`
+}
+
+type JadwalPerkuliahan struct {
+	ID                 int64      `gorm:"column:id" json:"id"`
+	IDKls              int64      `gorm:"column:id_kls" json:"id_kls"`
+	Sesi               int64      `gorm:"column:sesi" json:"sesi"`
+	MetodePembelajaran string     `gorm:"type:enum('offline','online','hybrid');not null;default:offline" json:"metode_pembelajaran"`
+	Tanggal            time.Time  `gorm:"type:date;not null" json:"tanggal"`
+	JamMulai           string     `gorm:"type:time;not null" json:"jam_mulai"`
+	JamSelesai         string     `gorm:"type:time;not null" json:"jam_selesai"`
+	IDRuangan          *int64     `gorm:"column:id_ruangan" json:"id_ruangan"`
+	URL                *string    `gorm:"type:text" json:"url"`
+	SKS                *int64     `gorm:"column:sks;not null" json:"sks"`
+	JenisPertemuan     string     `gorm:"type:enum('teori','praktikum','uts','uas');not null" json:"jenis_pertemuan"`
+	Status             string     `gorm:"type:enum('terjadwal','dimulai','selesai');not null;default:terjadwal" json:"status"`
+	CreatedAt          *time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt          *time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+func (JadwalPerkuliahan) TableName() string {
+	return "jadwal_perkuliahan"
 }
 
 func (a *ApplicationServer) TotalKelasMisca(c *fiber.Ctx) error {
@@ -548,19 +571,15 @@ func (a *ApplicationServer) TotalKelasMisca(c *fiber.Ctx) error {
 	})
 }
 
-// ListKelas handles the listing of classes with multiple lecturers
 func (a *ApplicationServer) ListKelasMisca(c *fiber.Ctx) error {
 	if IsSmartInstansi(c) {
 		return a.ListKelasSmart(c)
 	}
-
 	req := NewListKelasRequest()
 	if err := c.QueryParser(req); err != nil {
 		return HandleError(c, err)
 	}
-
 	var activeSemester string
-
 	if err := a.db.
 		Table("setting").
 		Where("param = ?", "periode_berlaku").
@@ -569,18 +588,14 @@ func (a *ApplicationServer) ListKelasMisca(c *fiber.Ctx) error {
 		Error; err != nil {
 		return HandleError(c, err)
 	}
-
 	// Set default semester
 	if req.Semester == "" {
 		req.Semester = activeSemester
 	}
-
 	// Model to hold query results
 	listKelas := make([]ListKelasResponse, 0)
-
 	offset := req.Filter.GetOffset()
 	limit := req.Filter.GetLimit()
-
 	q := a.db.
 		Table("kelaskuliah").
 		Select(`
@@ -631,12 +646,10 @@ func (a *ApplicationServer) ListKelasMisca(c *fiber.Ctx) error {
 		Joins("LEFT JOIN ruangan ON ruangan.id_ruangan = jadwal.id_ruangan").
 		Where("kelaskuliah.id_smt = ?", req.Semester).
 		Group("kelaskuliah.id_kls")
-
 	// Add keyword search
 	if req.Filter.HasKeyword() {
 		q = q.Where("kelaskuliah.nm_kls LIKE ?", "%"+req.Filter.Keyword+"%")
 	}
-
 	// Add sorting
 	if req.Filter.HasSort() {
 		q = q.Order(clause.OrderByColumn{
@@ -646,27 +659,58 @@ func (a *ApplicationServer) ListKelasMisca(c *fiber.Ctx) error {
 	} else {
 		q = q.Order("kelaskuliah.id_kls ASC")
 	}
-
 	// Count total data
 	var totalData int64
 	if err := q.Count(&totalData).Error; err != nil {
 		return HandleError(c, err)
 	}
-
 	// Add limit and offset
 	q = q.Offset(int(offset)).Limit(int(limit))
-
 	// Execute query
 	if err := q.Scan(&listKelas).Error; err != nil {
 		return HandleError(c, err)
 	}
-
 	// Post-process id_dosen_pengajar to convert pipe-separated string to slice
+	// and initialize empty slice for jadwal_perkuliahan
 	for i := range listKelas {
 		if listKelas[i].IDDosenPengajarStr != "" {
 			listKelas[i].IDDosenPengajar = strings.Split(listKelas[i].IDDosenPengajarStr, "|")
 		} else {
 			listKelas[i].IDDosenPengajar = []string{}
+		}
+		// Initialize empty slice for jadwal_perkuliahan to prevent null in JSON
+		listKelas[i].JadwalPerkuliahan = []JadwalPerkuliahan{}
+	}
+
+	// Efficiently fetch all jadwal perkuliahan in one query
+	if len(listKelas) > 0 {
+		// Collect all kelas IDs
+		kelasIDs := make([]int64, 0, len(listKelas))
+		kelasMap := make(map[string]int) // Map id_kelas to index in listKelas
+
+		for i, kelas := range listKelas {
+			if idKelas, err := strconv.ParseInt(kelas.IDKelas, 10, 64); err == nil {
+				kelasIDs = append(kelasIDs, idKelas)
+				kelasMap[kelas.IDKelas] = i
+			}
+		}
+
+		// Fetch all jadwal perkuliahan in one query
+		var allJadwalPerkuliahan []JadwalPerkuliahan
+		if err := a.db.
+			Where("id_kls IN ?", kelasIDs).
+			Order("id_kls ASC, sesi ASC, tanggal ASC, jam_mulai ASC").
+			Find(&allJadwalPerkuliahan).Error; err != nil {
+			// Log error but continue - jadwal will be empty
+		} else {
+			// Group jadwal by kelas ID
+			for _, jadwal := range allJadwalPerkuliahan {
+				kelasID := strconv.FormatInt(jadwal.IDKls, 10)
+				if idx, exists := kelasMap[kelasID]; exists {
+					// Append to existing slice (which is already initialized as empty)
+					listKelas[idx].JadwalPerkuliahan = append(listKelas[idx].JadwalPerkuliahan, jadwal)
+				}
+			}
 		}
 	}
 
@@ -675,7 +719,6 @@ func (a *ApplicationServer) ListKelasMisca(c *fiber.Ctx) error {
 	if err != nil {
 		return HandleError(c, err)
 	}
-
 	// Return result as JSON
 	return c.Status(fiber.StatusOK).JSON(ApiResponse[ListDataApiResponseWrapper[ListKelasResponse]]{
 		Code:    fiber.StatusOK,
